@@ -397,5 +397,6 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 
-assets/roms/*
+assets/roms/*.gb
+assets/roms/*.bin
 out/

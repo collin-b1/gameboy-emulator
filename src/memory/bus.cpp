@@ -39,6 +39,15 @@ void MemoryBus::bus_write(uint16_t addr, uint8_t data)
 	}
 }
 
+void MemoryBus::bus_write_word(uint16_t addr, uint16_t data)
+{
+	uint8_t lsb = data & 0xFF;
+	bus_write(addr, lsb);
+
+	uint8_t msb = (data >> 8) & 0xFF;
+	bus_write(addr + 1, msb);
+}
+
 Cart& MemoryBus::get_cart()
 {
 	return cart;
