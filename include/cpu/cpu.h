@@ -96,6 +96,18 @@ public:
     void RES_b3_r8(uint8_t, uint8_t&);
     void SET_b3_r8(uint8_t, uint8_t&);
 
+    void RLC_r16mem(uint16_t&);
+    void RRC_r16mem(uint16_t&);
+    void RL_r16mem(uint16_t&);
+    void RR_r16mem(uint16_t&);
+    void SLA_r16mem(uint16_t&);
+    void SRA_r16mem(uint16_t&);
+    void SWAP_r16mem(uint16_t&);
+    void SRL_r16mem(uint16_t&);
+    void BIT_b3_r16mem(uint8_t, uint16_t&);
+    void RES_b3_r16mem(uint8_t, uint16_t&);
+    void SET_b3_r16mem(uint8_t, uint16_t&);
+
 	void LDH_C_A();
     void LDH_imm8_A();
 	void LD_imm16_A();
@@ -110,6 +122,18 @@ public:
 
 	// Additional instructions
 	void LD_r16mem_imm8(uint16_t&);
+    void INC_r16mem(uint16_t&);
+	void DEC_r16mem(uint16_t&);
+    void LD_r8_r16mem(uint8_t&, uint16_t&);
+	void LD_r16mem_r8(uint16_t&, uint8_t&);
+    void ADD_A_r16mem(uint16_t&);
+    void ADC_A_r16mem(uint16_t&);
+	void SUB_A_r16mem(uint16_t&);
+    void SBC_A_r16mem(uint16_t&);
+    void AND_A_r16mem(uint16_t&);
+    void XOR_A_r16mem(uint16_t&);
+    void OR_A_r16mem(uint16_t&);
+    void CP_A_r16mem(uint16_t&);
 private:
 	Registers registers;
     bool ime, is_halted, is_stopped;
