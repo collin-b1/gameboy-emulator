@@ -9,61 +9,61 @@ extern uint8_t timings_cb[256];
 class CPU
 {
 public:
-	CPU(MemoryBus&);
-	//~CPU();
+    CPU(MemoryBus&);
+    //~CPU();
 
-	void init();
+    void init();
 
-	void reset();
-	//void step();
+    void reset();
+    //void step();
 
-	void next_instruction();
-	void decode_opcode(uint8_t);
-	void decode_cb_opcode(uint8_t);
+    void next_instruction();
+    void decode_opcode(uint8_t);
+    void decode_cb_opcode(uint8_t);
 
-	Registers get_registers() const;
-	void debug_print();
+    Registers get_registers() const;
+    void debug_print();
 
-	// Block 0
-	void NOP();
+    // Block 0
+    void NOP();
     void LD_r16_imm16(uint16_t&);
     void LD_r16mem_A(uint16_t&);
-	void LD_A_r16mem(uint16_t&);
-	void LD_imm16_SP();
+    void LD_A_r16mem(uint16_t&);
+    void LD_imm16_SP();
     void INC_r16(uint16_t&);
     void DEC_r16(uint16_t&);
     void ADD_HL_r16(uint16_t&);
     void INC_r8(uint8_t&);
     void DEC_r8(uint8_t&);
     void LD_r8_imm8(uint8_t&);
-	void RLCA();
-	void RRCA();
-	void RLA();
-	void RRA();
-	void DAA();
-	void CPL();
-	void SCF();
-	void CCF();
-	void JR_imm8();
+    void RLCA();
+    void RRCA();
+    void RLA();
+    void RRA();
+    void DAA();
+    void CPL();
+    void SCF();
+    void CCF();
+    void JR_imm8();
     void JR_cc_imm8(bool);
-	void STOP();
+    void STOP();
 
-	// Block 1
-	void LD_r8_r8(uint8_t&, uint8_t&);
-	void HALT();
+    // Block 1
+    void LD_r8_r8(uint8_t&, uint8_t&);
+    void HALT();
 
-	// Block 2
-	void ADD_A_r8(uint8_t&);
-	void ADC_A_r8(uint8_t&);
-	void SUB_A_r8(uint8_t&);
-	void SBC_A_r8(uint8_t&);
-	void AND_A_r8(uint8_t&);
-	void XOR_A_r8(uint8_t&);
-	void OR_A_r8(uint8_t&);
-	void CP_A_r8(uint8_t&);
-	
-	// Block 3
-	void ADD_A_imm8();
+    // Block 2
+    void ADD_A_r8(uint8_t&);
+    void ADC_A_r8(uint8_t&);
+    void SUB_A_r8(uint8_t&);
+    void SBC_A_r8(uint8_t&);
+    void AND_A_r8(uint8_t&);
+    void XOR_A_r8(uint8_t&);
+    void OR_A_r8(uint8_t&);
+    void CP_A_r8(uint8_t&);
+    
+    // Block 3
+    void ADD_A_imm8();
     void ADC_A_imm8();
     void SUB_A_imm8();
     void SBC_A_imm8();
@@ -72,15 +72,15 @@ public:
     void OR_A_imm8();
     void CP_A_imm8();
     void RET_cc(bool);
-	void RET();
-	void RETI();
+    void RET();
+    void RETI();
     void JP_cc_imm16(bool);
     void JP_imm16();
-	void JP_HL();
+    void JP_HL();
     void CALL_cc_imm16(bool);
     void CALL_imm16();
     void RST_tgt3(uint8_t);
-	void POP_r16stk(uint16_t&);
+    void POP_r16stk(uint16_t&);
     void PUSH_r16stk(uint16_t&);
 
     // 0xCB prefixed instructions
@@ -108,36 +108,36 @@ public:
     void RES_b3_r16mem(uint8_t, uint16_t&);
     void SET_b3_r16mem(uint8_t, uint16_t&);
 
-	void LDH_C_A();
+    void LDH_C_A();
     void LDH_imm8_A();
-	void LD_imm16_A();
-	void LDH_A_C();
+    void LD_imm16_A();
+    void LDH_A_C();
     void LDH_A_imm8();
     void LD_A_imm16();
     void ADD_SP_imm8();
     void LD_HL_SP_imm8();
-	void LD_SP_HL();
-	void DI();
-	void EI();
+    void LD_SP_HL();
+    void DI();
+    void EI();
 
-	// Additional instructions
-	void LD_r16mem_imm8(uint16_t&);
+    // Additional instructions
+    void LD_r16mem_imm8(uint16_t&);
     void INC_r16mem(uint16_t&);
-	void DEC_r16mem(uint16_t&);
+    void DEC_r16mem(uint16_t&);
     void LD_r8_r16mem(uint8_t&, uint16_t&);
-	void LD_r16mem_r8(uint16_t&, uint8_t&);
+    void LD_r16mem_r8(uint16_t&, uint8_t&);
     void ADD_A_r16mem(uint16_t&);
     void ADC_A_r16mem(uint16_t&);
-	void SUB_A_r16mem(uint16_t&);
+    void SUB_A_r16mem(uint16_t&);
     void SBC_A_r16mem(uint16_t&);
     void AND_A_r16mem(uint16_t&);
     void XOR_A_r16mem(uint16_t&);
     void OR_A_r16mem(uint16_t&);
     void CP_A_r16mem(uint16_t&);
 private:
-	Registers registers;
+    Registers registers;
     bool ime, is_halted, is_stopped;
-	uint8_t cycles;
-	uint8_t opcode;
-	MemoryBus& mmu;
+    uint8_t cycles;
+    uint8_t opcode;
+    MemoryBus& mmu;
 };

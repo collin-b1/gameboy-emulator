@@ -18,37 +18,37 @@ MemoryBus::~MemoryBus() {}
 
 uint8_t MemoryBus::bus_read(uint16_t addr)
 {
-	if (addr >= 0x0000 && addr <= 0x7FFF)
-	{
-		return cart.read(addr);
-	}
+    if (addr >= 0x0000 && addr <= 0x7FFF)
+    {
+        return cart.read(addr);
+    }
 
-	return 0;
+    return 0;
 }
 
 uint16_t MemoryBus::bus_read_word(uint16_t addr)
 {
-	return (0xFF & bus_read(addr) | (bus_read(addr + 1) << 8));
+    return (0xFF & bus_read(addr) | (bus_read(addr + 1) << 8));
 }
 
 void MemoryBus::bus_write(uint16_t addr, uint8_t data)
 {
-	if (addr >= 0x0000 && addr <= 0x7FFF)
-	{
-		cart.write(addr, data);
-	}
+    if (addr >= 0x0000 && addr <= 0x7FFF)
+    {
+        cart.write(addr, data);
+    }
 }
 
 void MemoryBus::bus_write_word(uint16_t addr, uint16_t data)
 {
-	uint8_t lsb = data & 0xFF;
-	bus_write(addr, lsb);
+    uint8_t lsb = data & 0xFF;
+    bus_write(addr, lsb);
 
-	uint8_t msb = (data >> 8) & 0xFF;
-	bus_write(addr + 1, msb);
+    uint8_t msb = (data >> 8) & 0xFF;
+    bus_write(addr + 1, msb);
 }
 
 Cart& MemoryBus::get_cart()
 {
-	return cart;
+    return cart;
 }
