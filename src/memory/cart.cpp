@@ -16,7 +16,7 @@ uint8_t Cart::read(uint16_t addr)
 
 void Cart::write(uint16_t addr, uint8_t data)
 {
-	std::cout << "Writing to ROM is not allowed!" << std::endl;
+    buffer[addr] = data;
 }
 
 bool Cart::load_rom(const std::string& path)
