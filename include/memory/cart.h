@@ -1,10 +1,10 @@
 #pragma once
-
-#define HEADER_START 0x100
-#define HEADER_END 0x14F
 #include <string>
 #include <vector>
 #include <cstdint>
+
+constexpr uint16_t HEADER_START = 0x100;
+constexpr uint16_t HEADER_END = 0x14F;
 
 struct cart_headers
 {

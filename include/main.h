@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include <iostream>
-#include <fstream>
-#include <string>
+#include <cstdint>
 
 // TODO: Reference additional headers your program requires here.

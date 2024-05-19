@@ -4,7 +4,7 @@
 
 int main(int argc, char **argv)
 {
-    std::string rom_name{"dmg_boot.bin"};
+    std::string rom_name{"dmg-acid2.gb"};
 
     if (argc > 1)
     {
@@ -17,7 +17,7 @@ int main(int argc, char **argv)
     mem.get_cart().load_rom(rom_path);
 
     CPU cpu{ mem };
-    if (argc > 1)
+    if (rom_name != "dmg_boot.bin")
     {
         cpu.init();
     }

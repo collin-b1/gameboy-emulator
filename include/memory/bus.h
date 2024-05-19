@@ -1,5 +1,4 @@
 #pragma once
-
 #include "cart.h"
 
 class MemoryBus
@@ -13,5 +12,6 @@ public:
     void bus_write_word(uint16_t addr, uint16_t data);
     Cart& get_cart();
 private:
+    uint8_t wram[0x2000];
     Cart cart;
 };

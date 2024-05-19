@@ -14,6 +14,11 @@ Cart::~Cart() {
 
 uint8_t Cart::read(uint16_t addr)
 {
+    if (addr > buffer.size())
+    {
+        std::cerr << "Address out of bounds: " << std::hex << addr << std::endl;
+        exit(1);
+    }
     return buffer[addr];
 }
 

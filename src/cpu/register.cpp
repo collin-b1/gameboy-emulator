@@ -3,15 +3,8 @@
 #include <iostream>
 #include <bitset>
 
-Registers::Registers()
-{
-    af = 0x0000;
-    bc = 0x0000;
-    de = 0x0000;
-    hl = 0x0000;
-    sp = 0x0000;
-    pc = 0x0000;
-};
+Registers::Registers() : af{ 0x0000 }, bc{ 0x0000 }, de{ 0x0000 }, hl{ 0x0000 }, sp{ 0x0000 }, pc{ 0x0000 }
+{};
 
 bool Registers::get_zero_flag()
 {

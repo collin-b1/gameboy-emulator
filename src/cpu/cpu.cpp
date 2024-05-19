@@ -337,10 +337,9 @@ void CPU::decode_opcode(uint8_t opcode)
     case 0xCA: JP_cc_imm16(registers.get_zero_flag()); break;
     case 0xCB:
     {
-        std::cout << "Prefixed Opcode found, decoding..." << std::endl;
+        //std::cout << "Prefixed Opcode found, decoding..." << std::endl;
         uint8_t cb_opcode = mmu.bus_read(++registers.pc);
         decode_cb_opcode(cb_opcode);
-        registers.pc += timings_cb[cb_opcode];
         break;
     }
     case 0xCC: CALL_cc_imm16(registers.get_zero_flag()); break;
@@ -392,7 +391,7 @@ void CPU::decode_opcode(uint8_t opcode)
 
 void CPU::decode_cb_opcode(uint8_t cb_opcode)
 {
-    std::cout << "\nRetrieved Prefixed Opcode 0x" << std::hex << static_cast<int>(cb_opcode) << std::dec << std::endl;
+    //std::cout << "\nRetrieved Prefixed Opcode 0x" << std::hex << static_cast<int>(cb_opcode) << std::dec << std::endl;
     // https://izik1.github.io/gbops/
 
     uint8_t* source = nullptr;
@@ -401,7 +400,7 @@ void CPU::decode_cb_opcode(uint8_t cb_opcode)
     int col = cb_opcode % 0x08;
     int row = cb_opcode / 0x08;
 
-    std::cout << row << ", " << col << std::endl;
+    //std::cout << row << ", " << col << std::endl;
 
     switch (col)
     {
@@ -483,9 +482,14 @@ void CPU::RETI()
     EI();
 }
 
-void CPU::JP_cc_imm16(bool)
+void CPU::JP_cc_imm16(bool condition_met)
 {
-
+    uint16_t nn = mmu.bus_read_word(++registers.pc);
+    registers.pc++;
+    if (condition_met)
+    {
+        registers.pc = nn - 1;
+    }
 }
 
 void CPU::RST_tgt3(uint8_t tgt3)
@@ -557,13 +561,15 @@ void CPU::STOP()
     exit(1);
 }
 
+
 void CPU::DI()
 {
-    
+    ime = 0;
 }
+
 void CPU::EI()
 {
-
+    ime = 1;
 }
 
 // LD [r16], imm8
@@ -597,44 +603,102 @@ void CPU::BIT_b3_r8(uint8_t bit, uint8_t &r8source)
     registers.set_half_carry_flag(1);
 }
 
-void CPU::RES_b3_r8(uint8_t, uint8_t&)
-{}
+void CPU::RES_b3_r8(uint8_t bit, uint8_t& r8)
+{
+    r8 &= ~(1 << bit);
+}
 
-void CPU::SET_b3_r8(uint8_t, uint8_t&)
-{}
+void CPU::SET_b3_r8(uint8_t bit, uint8_t& r8)
+{
+    r8 |= 1 << bit;
+}
 
-void CPU::RLC_r16mem(uint16_t&)
-{}
+void CPU::RLC_r16mem(uint16_t& r16mem)
+{
+    uint8_t value = mmu.bus_read(r16mem);
+    uint8_t msbit = value >> 7;
+    value <<= 1;
+    value |= msbit;
+    mmu.bus_write(r16mem, value);
 
-void CPU::RRC_r16mem(uint16_t&)
-{}
+    registers.set_zero_flag(value == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(0);
+    registers.set_carry_flag(msbit);
+}
 
-void CPU::RL_r16mem(uint16_t&)
-{}
+void CPU::RRC_r16mem(uint16_t& r16mem)
+{
+    uint8_t value = mmu.bus_read(r16mem);
+    uint8_t lsbit = value & 1;
+    value >>= 1;
+    value |= (lsbit << 7);
+    mmu.bus_write(r16mem, value);
 
-void CPU::RR_r16mem(uint16_t&)
-{}
+    registers.set_zero_flag(value == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(0);
+    registers.set_carry_flag(lsbit);
+}
+
+// RL [r16mem]
+void CPU::RL_r16mem(uint16_t& r16mem)
+{
+    uint8_t value = mmu.bus_read(r16mem);
+    uint8_t carry = registers.get_carry_flag();
+    uint8_t msbit = value >> 7;
+    value <<= 1;
+    value |= carry;
+    mmu.bus_write(r16mem, value);
+
+    registers.set_zero_flag(value == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(0);
+    registers.set_carry_flag(msbit);
+}
+
+void CPU::RR_r16mem(uint16_t& r16mem)
+{
+    uint8_t value = mmu.bus_read(r16mem);
+    auto carry = registers.get_carry_flag();
+    uint8_t lsbit = value & 1;
+
+}
 
 void CPU::SLA_r16mem(uint16_t&)
-{}
+{
+    exit(7);
+}
 
 void CPU::SRA_r16mem(uint16_t&)
-{}
+{
+    exit(7);
+}
 
 void CPU::SWAP_r16mem(uint16_t&)
-{}
+{
+    exit(7);
+}
 
 void CPU::SRL_r16mem(uint16_t&)
-{}
+{
+    exit(7);
+}
 
 void CPU::BIT_b3_r16mem(uint8_t, uint16_t&)
-{}
+{
+    exit(7);
+}
 
 void CPU::RES_b3_r16mem(uint8_t, uint16_t&)
-{}
+{
+    exit(7);
+}
 
 void CPU::SET_b3_r16mem(uint8_t, uint16_t&)
-{}
+{
+    exit(7);
+}
 
 // INC r8
 void CPU::INC_r8(uint8_t& r8)
@@ -947,25 +1011,39 @@ void CPU::RLC_r8(uint8_t& r8)
 }
 
 void CPU::RRC_r8(uint8_t&)
-{}
+{
+    exit(7);
+}
 
 void CPU::RL_r8(uint8_t&)
-{}
+{
+    exit(7);
+}
 
 void CPU::RR_r8(uint8_t&)
-{}
+{
+    exit(7);
+}
 
 void CPU::SLA_r8(uint8_t&)
-{}
+{
+    exit(7);
+}
 
 void CPU::SRA_r8(uint8_t&)
-{}
+{
+    exit(7);
+}
 
 void CPU::SWAP_r8(uint8_t&)
-{}
+{
+    exit(7);
+}
 
 void CPU::SRL_r8(uint8_t&)
-{}
+{
+    exit(7);
+}
 
 void CPU::POP_r16stk(uint16_t& r16dest)
 {
@@ -987,35 +1065,111 @@ void CPU::XOR_A_r8(uint8_t& r8dest)
     registers.set_half_carry_flag(0);
 }
 
-void CPU::OR_A_r8(uint8_t&)
-{}
+void CPU::OR_A_r8(uint8_t& r8)
+{
+    uint8_t result = registers.af.msb | r8;
+    registers.af.msb = result;
+    registers.set_zero_flag(result == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(0);
+    registers.set_carry_flag(0);
+}
 
-void CPU::CP_A_r8(uint8_t&)
-{}
+void CPU::CP_A_r8(uint8_t& r8)
+{
+    uint8_t result = registers.af.msb - r8;
+    registers.set_zero_flag(result == 0);
+    registers.set_sub_flag(1);
+    registers.set_half_carry_flag(Registers::subtraction_half_carry(registers.af.msb, r8));
+    registers.set_carry_flag(Registers::subtraction_carry(registers.af.msb, r8));
+}
 
 void CPU::ADD_A_imm8()
-{}
+{
+    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t result = registers.af.msb + imm8;
+    registers.af.msb = result;
+    registers.set_zero_flag(result == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(Registers::addition_half_carry(registers.af.msb, imm8));
+    registers.set_carry_flag(Registers::addition_carry(registers.af.msb, imm8));
+}
 
 void CPU::ADC_A_imm8()
-{}
+{
+    uint8_t result = registers.af.msb + mmu.bus_read(++registers.pc) + registers.get_carry_flag();
+    registers.af.msb = result;
+    registers.set_zero_flag(result == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(Registers::addition_half_carry(registers.af.msb, mmu.bus_read(registers.pc)));
+    registers.set_carry_flag(Registers::addition_carry(registers.af.msb, mmu.bus_read(registers.pc)));
+}
 
 void CPU::SUB_A_imm8()
-{}
+{
+    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t result = registers.af.msb - imm8;
+    registers.af.msb = result;
+    registers.set_zero_flag(result == 0);
+    registers.set_sub_flag(1);
+    registers.set_half_carry_flag(Registers::subtraction_half_carry(registers.af.msb, imm8));
+    registers.set_carry_flag(Registers::subtraction_carry(registers.af.msb, imm8));
+}
 
 void CPU::SBC_A_imm8()
-{}
+{
+    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t carry = registers.get_carry_flag();
+    uint8_t result = registers.af.msb - imm8 - carry;
+    registers.af.msb = result;
+    registers.set_zero_flag(result == 0);
+    registers.set_sub_flag(1);
+    registers.set_half_carry_flag(Registers::subtraction_half_carry(registers.af.msb, imm8));
+    registers.set_carry_flag(Registers::subtraction_carry(registers.af.msb, imm8));
+}
 
 void CPU::AND_A_imm8()
-{}
+{
+    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t result = registers.af.msb & imm8;
+    registers.af.msb = result;
+    registers.set_zero_flag(result == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(0);
+    registers.set_carry_flag(0);
+}
 
 void CPU::XOR_A_imm8()
-{}
+{
+    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t result = registers.af.msb ^ imm8;
+    registers.af.msb = result;
+    registers.set_zero_flag(result == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(0);
+    registers.set_carry_flag(0);
+}
 
 void CPU::OR_A_imm8()
-{}
+{
+    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t result = registers.af.msb | imm8;
+    registers.af.msb = result;
+    registers.set_zero_flag(result == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(0);
+    registers.set_carry_flag(0);
+}
 
 void CPU::CP_A_imm8()
-{}
+{
+    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t result = registers.af.msb - imm8;
+    registers.set_zero_flag(result == 0);
+    registers.set_sub_flag(1);
+    registers.set_half_carry_flag(Registers::subtraction_half_carry(registers.af.msb, imm8));
+    registers.set_carry_flag(Registers::subtraction_carry(registers.af.msb, imm8));
+}
 
 // LD r8, [r16]
 void CPU::LD_r8_r16mem(uint8_t& r8, uint16_t& r16mem)
