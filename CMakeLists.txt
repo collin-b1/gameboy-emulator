@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 include_directories(include)
 
 # Set ROMs directory path
-set(ROMS_DIRECTORY "${CMAKE_SOURCE_DIR}/assets/roms")
+set(ROMS_DIRECTORY "${CMAKE_SOURCE_DIR}/assets/roms/")
 
 # Pass the ROMs directory to the code
 add_definitions(-DROMS_DIRECTORY="${ROMS_DIRECTORY}")

@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <memory/bus.h>
+#include <iostream>
 // 0000	3FFF	16 KiB ROM bank 00				From cartridge, usually a fixed bank
 // 4000	7FFF	16 KiB ROM Bank 01–NN			From cartridge, switchable bank via mapper(if any)
 // 8000	9FFF	8 KiB Video RAM(VRAM)			In CGB mode, switchable bank 0 / 1
@@ -23,6 +24,11 @@ uint8_t MemoryBus::bus_read(uint16_t addr)
         return cart.read(addr);
     }
 
+    if (addr == 0xFF44)
+    {
+        return 0x90;
+    }
+
     return 0;
 }
 
@@ -33,6 +39,7 @@ uint16_t MemoryBus::bus_read_word(uint16_t addr)
 
 void MemoryBus::bus_write(uint16_t addr, uint8_t data)
 {
+    //std::cout << "Writing value 0x" << std::hex << (int)data << " to address: 0x" << std::hex << (int)addr << std::dec << std::endl;
     if (addr >= 0x0000 && addr <= 0x7FFF)
     {
         cart.write(addr, data);

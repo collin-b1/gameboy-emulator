@@ -23,6 +23,7 @@ public:
 
     Registers get_registers() const;
     void debug_print();
+    void inline_debug_print();
 
     // Block 0
     void NOP();

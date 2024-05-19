@@ -30,10 +30,10 @@ public:
     Cart();
     ~Cart();
 
-    bool load_rom(const std::string& path);
+    bool load_rom(std::string&);
     bool load_header();
-    uint8_t read(uint16_t addr);
-    void write(uint16_t addr, uint8_t data);
+    uint8_t read(uint16_t);
+    void write(uint16_t, uint8_t);
 
 private:
     std::string name;

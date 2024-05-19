@@ -2,7 +2,10 @@
 #include <fstream>
 #include <iostream>
 
-Cart::Cart() : headers() {}
+Cart::Cart() : headers()
+{
+    buffer = std::vector<uint8_t>(0x100);
+}
 Cart::~Cart() {
     Cart::buffer.clear();
     Cart::buffer.shrink_to_fit();
@@ -19,7 +22,7 @@ void Cart::write(uint16_t addr, uint8_t data)
     buffer[addr] = data;
 }
 
-bool Cart::load_rom(const std::string& path)
+bool Cart::load_rom(std::string &path)
 {
     std::ifstream rom;
     rom.open(path, std::ios::binary);

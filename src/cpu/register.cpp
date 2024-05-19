@@ -53,24 +53,43 @@ void Registers::set_carry_flag(bool value)
     af.lsb = value ? af.lsb | 0x10 : af.lsb & 0xEF;
 }
 
-bool Registers::has_half_carry(uint8_t a, uint8_t b)
+bool Registers::addition_half_carry(uint8_t a, uint8_t b)
 {
     return (a & 0x0F) + (b & 0x0F) > 0x0F;
 }
+bool Registers::subtraction_half_carry(uint8_t a, uint8_t b)
+{
+    return (a & 0x0F) - (b & 0x0F) & 0x10;
+}
 
-bool Registers::has_carry(uint8_t a, uint8_t b)
+bool Registers::addition_carry(uint8_t a, uint8_t b)
 {
     return (a & 0xFF) + (b & 0xFF) > 0xFF;
 }
 
-bool Registers::has_half_carry(uint16_t a, uint16_t b)
+bool Registers::subtraction_carry(uint8_t a, uint8_t b)
+{
+    return (a & 0xFF) - (b & 0xFF) & 0x100;
+}
+
+bool Registers::addition_half_carry(uint16_t a, uint16_t b)
 {
     return (a & 0x0FFF) + (b & 0x0FFF) > 0x0FFF;
 }
 
-bool Registers::has_carry(uint16_t a, uint16_t b)
+bool Registers::subtraction_half_carry(uint16_t a, uint16_t b)
+{
+    return (a & 0x0FFF) - (b & 0x0FFF) & 0x10;
+}
+
+bool Registers::addition_carry(uint16_t a, uint16_t b)
 {
     return (a & 0xFFFF) + (b & 0xFFFF) > 0xFFFF;
+}
+
+bool Registers::subtraction_carry(uint16_t a, uint16_t b)
+{
+    return (a & 0xFFFF) - (b & 0xFFFF) & 0x0100;
 }
 
 void Registers::print_registers()

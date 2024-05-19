@@ -42,11 +42,15 @@ public:
     void set_half_carry_flag(bool);
     void set_carry_flag(bool);
 
-    static bool has_carry(uint8_t, uint8_t);
-    static bool has_half_carry(uint8_t, uint8_t);
+    static bool addition_carry(uint8_t, uint8_t);
+    static bool subtraction_carry(uint8_t, uint8_t);
+    static bool addition_half_carry(uint8_t, uint8_t);
+    static bool subtraction_half_carry(uint8_t, uint8_t);
 
-    static bool has_carry(uint16_t, uint16_t);
-    static bool has_half_carry(uint16_t, uint16_t);
+    static bool addition_carry(uint16_t, uint16_t);
+    static bool subtraction_carry(uint16_t, uint16_t);
+    static bool addition_half_carry(uint16_t, uint16_t);
+    static bool subtraction_half_carry(uint16_t, uint16_t);
 
     // Debug functions
     void print_registers();
