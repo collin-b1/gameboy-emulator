@@ -1,5 +1,5 @@
 #include <cstdint>
-#include <memory/bus.h>
+#include <bus.h>
 #include <iostream>
 // 0000	3FFF	16 KiB ROM bank 00				From cartridge, usually a fixed bank
 // 4000	7FFF	16 KiB ROM Bank 01–NN			From cartridge, switchable bank via mapper(if any)
@@ -16,6 +16,7 @@
 
 MemoryBus::MemoryBus() : cart{Cart()} 
 {
+    io = std::vector<uint8_t>(0xFF7F - 0xFF00, 0xFF);
     wram = std::vector<uint8_t>(0xE000 - 0xC000, 0xFF);
     hram = std::vector<uint8_t>(0xFFFE - 0xFF80, 0xFF);
 }
@@ -32,6 +33,11 @@ uint8_t MemoryBus::bus_read(uint16_t addr)
     if (addr >= 0xC000 && addr <= 0xDFFF)
     {
         return wram[addr - 0xC000];
+    }
+
+    if (addr >= 0xFF00 && addr <= 0xFF7F)
+    {
+        return io[addr - 0xFF00];
     }
 
     if (addr >= 0xFF80 && addr <= 0xFFFE)
@@ -68,6 +74,11 @@ void MemoryBus::bus_write(uint16_t addr, uint8_t data)
     if (addr >= 0xC000 && addr <= 0xDFFF)
     {
         wram[addr - 0xC000] = data;
+    }
+
+    if (addr >= 0xFF00 && addr <= 0xFF7F)
+    {
+        io[addr - 0xFF00] = data;
     }
 
     if (addr >= 0xFF80 && addr <= 0xFFFE)

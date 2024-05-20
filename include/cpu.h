@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
-#include "cpu/register.h"
-#include "memory/bus.h"
+#include "register.h"
+#include "bus.h"
 
 extern uint8_t timings_u[256];
 extern uint8_t timings_cb[256];
@@ -14,12 +14,9 @@ public:
 
     void init();
 
-    void reset();
-    //void step();
-
     void next_instruction();
-    void decode_opcode(uint8_t);
-    void decode_cb_opcode(uint8_t);
+    void execute_opcode(uint8_t);
+    void execute_cb_opcode(uint8_t);
 
     Registers get_registers() const;
     void debug_print();

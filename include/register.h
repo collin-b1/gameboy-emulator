@@ -27,7 +27,9 @@ class Registers
 {
 public:
     Register af, bc, de, hl;
-    uint16_t sp, pc;
+
+    // SP and PC can be regular u16 because MSB and LSB wont be accessed directly
+    uint16_t sp, pc; 
 
     Registers();
 

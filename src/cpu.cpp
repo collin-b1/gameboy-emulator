@@ -1,4 +1,4 @@
-#include "cpu/cpu.h"
+#include "cpu.h"
 #include <iostream>
 
 // Unprefixed
@@ -46,11 +46,7 @@ uint8_t timings_cb[256] = {
 CPU::CPU(MemoryBus& mmu) : registers(), cycles(0), opcode(0), mmu(mmu), is_halted(false), is_stopped(false), ime(false)
 {}
 
-void CPU::reset()
-{
-    // need to implement
-}
-
+// Set registers to post-bootrom values
 void CPU::init()
 {
     registers.af.word = 0x01B0;
@@ -72,11 +68,11 @@ void CPU::next_instruction()
 
     inline_debug_print();
 
-    //inline_debug_print(); // debug only
-    decode_opcode(opcode);
-
     // Increment program counter (this assumes the previous opcode was legal)
     registers.pc++;
+
+    //inline_debug_print(); // debug only
+    execute_opcode(opcode);
 }
 
 Registers CPU::get_registers() const
@@ -109,7 +105,7 @@ void CPU::inline_debug_print()
     );
 }
 
-void CPU::decode_opcode(uint8_t opcode)
+void CPU::execute_opcode(uint8_t opcode)
 {
     //std::cout << "\nApplying Opcode 0x" << std::hex << static_cast<int>(opcode) << std::dec << std::endl;
     switch (opcode)
@@ -338,8 +334,8 @@ void CPU::decode_opcode(uint8_t opcode)
     case 0xCB:
     {
         //std::cout << "Prefixed Opcode found, decoding..." << std::endl;
-        uint8_t cb_opcode = mmu.bus_read(++registers.pc);
-        decode_cb_opcode(cb_opcode);
+        uint8_t cb_opcode = mmu.bus_read(registers.pc++);
+        execute_cb_opcode(cb_opcode);
         break;
     }
     case 0xCC: CALL_cc_imm16(registers.get_zero_flag()); break;
@@ -389,7 +385,7 @@ void CPU::decode_opcode(uint8_t opcode)
     }
 }
 
-void CPU::decode_cb_opcode(uint8_t cb_opcode)
+void CPU::execute_cb_opcode(uint8_t cb_opcode)
 {
     switch (cb_opcode)
     {
@@ -526,23 +522,23 @@ void CPU::NOP()
 // CALL imm16
 void CPU::CALL_imm16()
 {
-    uint16_t imm16 = mmu.bus_read_word(++registers.pc);
+    uint16_t imm16 = mmu.bus_read_word(registers.pc);
     registers.pc += 2;
 
     PUSH_r16stk(registers.pc);
-    registers.pc = imm16 - 1;
+    registers.pc = imm16;
 }
 
 // CALL cc, imm16
 void CPU::CALL_cc_imm16(bool condition_met)
 {
-    uint16_t imm16 = mmu.bus_read_word(++registers.pc);
-    registers.pc++;
+    uint16_t imm16 = mmu.bus_read_word(registers.pc);
+    registers.pc += 2;
+
     if (condition_met)
     {
-        registers.pc++;
         PUSH_r16stk(registers.pc);
-        registers.pc = imm16 - 1;
+        registers.pc = imm16;
     }
 }
 
@@ -550,7 +546,6 @@ void CPU::CALL_cc_imm16(bool condition_met)
 void CPU::RET()
 {
     POP_r16stk(registers.pc);
-    registers.pc--; // PC is incremented after the instruction is executed
 }
 
 void CPU::RET_cc(bool condition_met)
@@ -558,7 +553,6 @@ void CPU::RET_cc(bool condition_met)
     if (condition_met)
     {
         POP_r16stk(registers.pc);
-        registers.pc--; // PC is incremented after the instruction is executed
     }
 }
 void CPU::RETI()
@@ -569,11 +563,12 @@ void CPU::RETI()
 
 void CPU::JP_cc_imm16(bool condition_met)
 {
-    uint16_t nn = mmu.bus_read_word(++registers.pc);
-    registers.pc++;
+    uint16_t nn = mmu.bus_read_word(registers.pc);
+    registers.pc += 2;
+
     if (condition_met)
     {
-        registers.pc = nn - 1;
+        registers.pc = nn;
     }
 }
 
@@ -660,7 +655,7 @@ void CPU::EI()
 // LD [r16], imm8
 void CPU::LD_r16mem_imm8(uint16_t& r16)
 {
-    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t imm8 = mmu.bus_read(registers.pc++);
     mmu.bus_write(r16, imm8);
 }
 
@@ -806,7 +801,7 @@ void CPU::DEC_r8(uint8_t& r8)
 // JR cc, imm8
 void CPU::JR_cc_imm8(bool condition_met)
 {
-    int8_t e = (int8_t) mmu.bus_read(++registers.pc);
+    int8_t e = (int8_t) mmu.bus_read(registers.pc++);
     if (condition_met)
     {
         registers.pc += e;
@@ -816,9 +811,9 @@ void CPU::JR_cc_imm8(bool condition_met)
 // JP imm16
 void CPU::JP_imm16()
 {
-    uint16_t nn = mmu.bus_read_word(++registers.pc);
+    uint16_t nn = mmu.bus_read_word(registers.pc++);
     registers.pc++;
-    registers.pc = nn - 1;
+    registers.pc = nn;
 }
 
 // JP HL
@@ -836,7 +831,7 @@ void CPU::LD_r8_r8(uint8_t& r8dest, uint8_t& r8source)
 // LD r8, imm8
 void CPU::LD_r8_imm8(uint8_t& r8dest)
 {
-    uint8_t n = mmu.bus_read(++registers.pc);
+    uint8_t n = mmu.bus_read(registers.pc++);
     r8dest = n;
 }
 
@@ -922,7 +917,7 @@ void CPU::CCF()
 // JR imm8
 void CPU::JR_imm8()
 {
-    int8_t e = (int8_t)mmu.bus_read(++registers.pc);
+    int8_t e = (int8_t)mmu.bus_read(registers.pc++);
     registers.pc += e;
 }
 
@@ -956,7 +951,7 @@ void CPU::LDH_A_C()
 // LDH A, [imm8]
 void CPU::LDH_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t imm8 = mmu.bus_read(registers.pc++);
     uint8_t ffimm8 = mmu.bus_read(0xFF00 + imm8);
     registers.af.msb = ffimm8;
 }
@@ -964,7 +959,7 @@ void CPU::LDH_A_imm8()
 // LDH [imm8], A
 void CPU::LDH_imm8_A()
 {
-    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t imm8 = mmu.bus_read(registers.pc++);
     mmu.bus_write(0xFF00 + imm8, registers.af.msb);
 }
 
@@ -977,7 +972,7 @@ void CPU::LDH_C_A()
 // LD r16, imm16
 void CPU::LD_r16_imm16(uint16_t& r16dest)
 {
-    uint16_t nn = mmu.bus_read_word(++registers.pc);
+    uint16_t nn = mmu.bus_read_word(registers.pc++);
     registers.pc++;
     r16dest = nn;
 }
@@ -985,7 +980,7 @@ void CPU::LD_r16_imm16(uint16_t& r16dest)
 // LD [imm16], SP
 void CPU::LD_imm16_SP()
 {
-    uint16_t imm16 = mmu.bus_read_word(++registers.pc);
+    uint16_t imm16 = mmu.bus_read_word(registers.pc++);
     registers.pc++;
     mmu.bus_write_word(imm16, registers.sp);
 }
@@ -1015,7 +1010,7 @@ void CPU::ADD_HL_r16(uint16_t& r16)
 // LD [imm16], A
 void CPU::LD_imm16_A()
 {
-    uint16_t imm16 = mmu.bus_read_word(++registers.pc);
+    uint16_t imm16 = mmu.bus_read_word(registers.pc++);
     registers.pc++;
     mmu.bus_write(imm16, registers.af.msb);
 }
@@ -1029,7 +1024,7 @@ void CPU::LD_r16mem_A(uint16_t& r16dest)
 // LD A, [imm16]
 void CPU::LD_A_imm16()
 {
-    uint16_t imm16 = mmu.bus_read_word(++registers.pc);
+    uint16_t imm16 = mmu.bus_read_word(registers.pc++);
     registers.pc++;
     uint8_t n = mmu.bus_read(imm16);
     registers.af.msb = n;
@@ -1039,7 +1034,7 @@ void CPU::LD_A_imm16()
 void CPU::ADD_SP_imm8()
 {
     uint16_t sp = registers.sp;
-    int8_t imm8 = (int8_t) mmu.bus_read(++registers.pc);
+    int8_t imm8 = (int8_t) mmu.bus_read(registers.pc++);
     registers.set_zero_flag(0);
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(Registers::addition_half_carry(sp, imm8));
@@ -1050,7 +1045,7 @@ void CPU::ADD_SP_imm8()
 // LD HL, SP + imm8
 void CPU::LD_HL_SP_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t imm8 = mmu.bus_read(registers.pc++);
     uint8_t spimm8 = registers.sp + imm8;
     registers.hl = spimm8;
 }
@@ -1207,7 +1202,7 @@ void CPU::CP_A_r8(uint8_t& r8)
 
 void CPU::ADD_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t imm8 = mmu.bus_read(registers.pc++);
     uint8_t result = registers.af.msb + imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
@@ -1218,17 +1213,18 @@ void CPU::ADD_A_imm8()
 
 void CPU::ADC_A_imm8()
 {
-    uint8_t result = registers.af.msb + mmu.bus_read(++registers.pc) + registers.get_carry_flag();
+    uint8_t imm8 = mmu.bus_read(registers.pc++);
+    uint8_t result = registers.af.msb + imm8 + registers.get_carry_flag();
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
-    registers.set_half_carry_flag(Registers::addition_half_carry(registers.af.msb, mmu.bus_read(registers.pc)));
-    registers.set_carry_flag(Registers::addition_carry(registers.af.msb, mmu.bus_read(registers.pc)));
+    registers.set_half_carry_flag(Registers::addition_half_carry(registers.af.msb, imm8));
+    registers.set_carry_flag(Registers::addition_carry(registers.af.msb, imm8));
     registers.af.msb = result;
 }
 
 void CPU::SUB_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t imm8 = mmu.bus_read(registers.pc++);
     uint8_t result = registers.af.msb - imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(1);
@@ -1239,7 +1235,7 @@ void CPU::SUB_A_imm8()
 
 void CPU::SBC_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t imm8 = mmu.bus_read(registers.pc++);
     uint8_t carry = registers.get_carry_flag();
     uint8_t result = registers.af.msb - imm8 - carry;
     registers.set_zero_flag(result == 0);
@@ -1251,7 +1247,7 @@ void CPU::SBC_A_imm8()
 
 void CPU::AND_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t imm8 = mmu.bus_read(registers.pc++);
     uint8_t result = registers.af.msb & imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
@@ -1262,7 +1258,7 @@ void CPU::AND_A_imm8()
 
 void CPU::XOR_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t imm8 = mmu.bus_read(registers.pc++);
     uint8_t result = registers.af.msb ^ imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
@@ -1273,7 +1269,7 @@ void CPU::XOR_A_imm8()
 
 void CPU::OR_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t imm8 = mmu.bus_read(registers.pc++);
     uint8_t result = registers.af.msb | imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
@@ -1284,7 +1280,7 @@ void CPU::OR_A_imm8()
 
 void CPU::CP_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(++registers.pc);
+    uint8_t imm8 = mmu.bus_read(registers.pc++);
     uint8_t result = registers.af.msb - imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(1);
@@ -1295,8 +1291,7 @@ void CPU::CP_A_imm8()
 // LD r8, [r16]
 void CPU::LD_r8_r16mem(uint8_t& r8, uint16_t& r16mem)
 {
-    uint8_t data = mmu.bus_read(r16mem);
-    r8 = data;
+    r8 = mmu.bus_read(r16mem);
 }
 
 // LD [r16], r8

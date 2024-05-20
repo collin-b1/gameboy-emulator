@@ -1,4 +1,4 @@
-#include "cpu/register.h"
+#include "register.h"
 #include <stdio.h>
 #include <iostream>
 #include <bitset>

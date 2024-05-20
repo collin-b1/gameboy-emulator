@@ -1,6 +1,6 @@
 ﻿#include "main.h"
-#include "memory/cart.h"
-#include "cpu/cpu.h"
+#include "cart.h"
+#include "cpu.h"
 
 int main(int argc, char **argv)
 {

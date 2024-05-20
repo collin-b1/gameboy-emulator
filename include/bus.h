@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 #include "cart.h"
 
 class MemoryBus
@@ -12,6 +13,7 @@ public:
     void bus_write_word(uint16_t addr, uint16_t data);
     Cart& get_cart();
 private:
+    std::vector<uint8_t> io;
     std::vector<uint8_t> wram;
     std::vector<uint8_t> hram;
     Cart cart;
