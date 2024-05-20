@@ -4,7 +4,7 @@
 
 Cart::Cart() : headers()
 {
-    buffer = std::vector<uint8_t>(0x100);
+    buffer = std::vector<uint8_t>(0x7FFF);
 }
 Cart::~Cart() {
     Cart::buffer.clear();
@@ -39,7 +39,7 @@ bool Cart::load_rom(std::string &path)
     }
 
     rom.seekg(0, std::ios::end);
-    buffer.resize(rom.tellg());
+    //buffer.resize(rom.tellg());
     rom.seekg(0, std::ios::beg);
     rom.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
     rom.close();

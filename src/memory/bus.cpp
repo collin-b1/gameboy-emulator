@@ -14,7 +14,12 @@
 // FF80	FFFE	High RAM(HRAM)
 // FFFF	FFFF	Interrupt Enable register (IE)
 
-MemoryBus::MemoryBus() : cart(Cart()) {}
+MemoryBus::MemoryBus() : cart{Cart()} 
+{
+    wram = std::vector<uint8_t>(0xE000 - 0xC000, 0xFF);
+    hram = std::vector<uint8_t>(0xFFFE - 0xFF80, 0xFF);
+}
+
 MemoryBus::~MemoryBus() {}
 
 uint8_t MemoryBus::bus_read(uint16_t addr)
@@ -22,6 +27,16 @@ uint8_t MemoryBus::bus_read(uint16_t addr)
     if (addr >= 0x0000 && addr <= 0x7FFF)
     {
         return cart.read(addr);
+    }
+
+    if (addr >= 0xC000 && addr <= 0xDFFF)
+    {
+        return wram[addr - 0xC000];
+    }
+
+    if (addr >= 0xFF80 && addr <= 0xFFFE)
+    {
+        return hram[addr - 0xFF80];
     }
 
     if (addr == 0xFF44)
@@ -39,10 +54,25 @@ uint16_t MemoryBus::bus_read_word(uint16_t addr)
 
 void MemoryBus::bus_write(uint16_t addr, uint8_t data)
 {
+    /*if (addr >= 0xC000 && addr <= 0xDFFF)
+    {
+        std::cout << "Write " << std::hex << (int)data << std::endl;
+        std::cout << std::endl;
+    }*/
     //std::cout << "Writing value 0x" << std::hex << (int)data << " to address: 0x" << std::hex << (int)addr << std::dec << std::endl;
     if (addr >= 0x0000 && addr <= 0x7FFF)
     {
         cart.write(addr, data);
+    }
+
+    if (addr >= 0xC000 && addr <= 0xDFFF)
+    {
+        wram[addr - 0xC000] = data;
+    }
+
+    if (addr >= 0xFF80 && addr <= 0xFFFE)
+    {
+        hram[addr - 0xFF80] = data;
     }
 }
 
