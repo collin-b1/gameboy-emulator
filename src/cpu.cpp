@@ -68,10 +68,8 @@ void CPU::next_instruction()
 
     inline_debug_print();
 
-    // Increment program counter (this assumes the previous opcode was legal)
     registers.pc++;
 
-    //inline_debug_print(); // debug only
     execute_opcode(opcode);
 }
 
