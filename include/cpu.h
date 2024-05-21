@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include "register.h"
+#include "interrupt.h"
 #include "bus.h"
 
 extern uint8_t timings_u[256];
@@ -9,7 +10,7 @@ extern uint8_t timings_cb[256];
 class CPU
 {
 public:
-    CPU(MemoryBus&);
+    CPU(MemoryBus&, InterruptManager&);
     //~CPU();
 
     void init();
@@ -137,4 +138,5 @@ private:
     uint8_t cycles;
     uint8_t opcode;
     MemoryBus& mmu;
+    InterruptManager& imu;
 };

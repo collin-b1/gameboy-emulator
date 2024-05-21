@@ -10,9 +10,9 @@ public:
     uint8_t read(uint16_t addr);
     void write(uint16_t addr, uint8_t data);
 private:
-    // 0xFFFF: IE - Interrupt Enable
-    uint8_t ie;
-
     // 0xFF0F: IF - Interrupt Flag
-    uint8_t iflag;
+    bool vblank_req, lcd_req, timer_req, serial_req, joypad_req;
+
+    // 0xFFFF: IE - Interrupt Enable
+    bool vblank, lcd, timer, serial, joypad;
 };

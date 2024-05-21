@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include <vector>
+#include <array>
 #include <cstdint>
 
 constexpr uint16_t ROM_START = 0x0000;
@@ -31,15 +31,15 @@ class Cart
 {
 public:
     Cart();
-    ~Cart();
 
     bool load_rom(std::string&);
     bool load_header();
     uint8_t read(uint16_t);
     void write(uint16_t, uint8_t);
+    void print_headers();
 
 private:
     std::string name;
     cart_headers headers;
-    std::vector<uint8_t> buffer;
+    std::array<uint8_t, ROM_END - ROM_START + 1> buffer;
 };

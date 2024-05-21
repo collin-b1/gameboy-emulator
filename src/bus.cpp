@@ -2,12 +2,12 @@
 #include <cstdint>
 #include <iostream>
 
-MemoryBus::MemoryBus() : 
-    cart{ Cart()},
-    ppu{ PPU() },
-    imu{ InterruptManager() },
-    wram(WRAM_END - WRAM_START + 1), 
-    hram(HRAM_END - HRAM_START + 1),
+MemoryBus::MemoryBus(PPU& ppu, InterruptManager& imu) : 
+    cart{ Cart{} },
+    ppu(ppu),
+    imu(imu),
+    wram{},
+    hram{},
     svbk(0)
 {}
 
@@ -15,24 +15,46 @@ MemoryBus::~MemoryBus() {}
 
 uint8_t MemoryBus::bus_read(uint16_t addr)
 {
+    // ROM Bank 0-n
     if (addr >= 0x0000 && addr <= 0x7FFF)
     {
         return cart.read(addr);
     }
 
+    // Video RAM (VRAM)
+    if (addr >= 0x8000 && addr <= 0x9FFF)
+    {
+        return ppu.read(addr);
+    }
+
+    // Working RAM (WRAM)
     if (addr >= 0xC000 && addr <= 0xDFFF)
     {
         return wram[addr - 0xC000];
     }
 
-    if (addr >= 0xFF80 && addr <= 0xFFFE)
+    // I/O Registers
+    else if (addr >= 0xFF00 && addr <= 0xFF7F)
+    {
+        return ppu.read(addr);
+    }
+
+    // Interrupt Flag (IF)
+    else if (addr == 0xFF0F)
+    {
+        return imu.read(addr);
+    }
+
+    // High RAM (HRAM)
+    else if (addr >= 0xFF80 && addr <= 0xFFFE)
     {
         return hram[addr - 0xFF80];
     }
 
-    if (addr == 0xFF44)
+    // Interrupt Enable (IE)
+    else if (addr == 0xFFFF)
     {
-        return 0x90;
+        return imu.read(addr);
     }
 
     return 0;
@@ -51,19 +73,48 @@ void MemoryBus::bus_write(uint16_t addr, uint8_t data)
         std::cout << std::endl;
     }*/
     //std::cout << "Writing value 0x" << std::hex << (int)data << " to address: 0x" << std::hex << (int)addr << std::dec << std::endl;
+    
+    // ROM Bank 0-n
     if (addr >= 0x0000 && addr <= 0x7FFF)
     {
         cart.write(addr, data);
     }
 
-    if (addr >= 0xC000 && addr <= 0xDFFF)
+    // Video RAM (VRAM)
+    else if (addr >= 0x8000 && addr <= 0x9FFF)
+    {
+        ppu.write(addr, data);
+    }
+
+    // Working RAM (WRAM)
+    else if (addr >= 0xC000 && addr <= 0xDFFF)
     {
         wram[addr - 0xC000] = data;
     }
 
-    if (addr >= 0xFF80 && addr <= 0xFFFE)
+    // Object Attribute Memory (OAM)
+    else if (addr >= 0xFE00 && addr <= 0xFE9F)
+    {
+        ppu.write(addr, data);
+    }
+
+    // I/O Registers
+    else if (addr >= 0xFF00 && addr <= 0xFF7F)
+    {
+        ppu.write(addr, data);
+        imu.write(addr, data);
+    }
+
+    // High RAM
+    else if (addr >= 0xFF80 && addr <= 0xFFFE)
     {
         hram[addr - 0xFF80] = data;
+    }
+
+    // Interrupt Enable (IE)
+    else if (addr == 0xFFFF)
+    {
+        imu.write(addr, data);
     }
 }
 

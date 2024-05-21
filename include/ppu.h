@@ -1,7 +1,9 @@
 #pragma once
 
-#include <vector>
+#include <array>
 #include <cstdint>
+
+#include "interrupt.h"
 
 constexpr uint16_t VRAM_START = 0x8000;
 constexpr uint16_t VRAM_END = 0x9FFF;
@@ -9,29 +11,39 @@ constexpr uint16_t VRAM_END = 0x9FFF;
 constexpr uint16_t OAM_START = 0xFE00;
 constexpr uint16_t OAM_END = 0xFE9F;
 
+enum PPU_Mode;
+
 class PPU
 {
 public:
-    PPU();
+    PPU(InterruptManager& imu);
 
     uint8_t read(uint16_t);
     void write(uint16_t, uint8_t);
 
 private:
+    InterruptManager& imu;
+
     // 0x8000 - 0x9FFF: VRAM
-    std::vector<uint8_t> vram;
+    std::array<uint8_t, VRAM_END - VRAM_START + 1> vram;
 
     // 0xFE00 - 0xFE9F: OAM
-    std::vector<uint8_t> oam;
+    std::array<uint8_t, OAM_END - OAM_START + 1> oam;
 
     // 0xFF40: LCDC - LCD Control
     uint8_t lcdc;
 
-    // 0xFF41: STAT - LCD Status
-    uint8_t stat;
+    // 0xFF41: STAT - LCD Mode
+    PPU_Mode mode;
 
     // 0xFF42 – 0xFF43: SCY, SCX: Background viewport Y position, X position
     uint8_t scy, scx;
+
+    // 0xFF44: LY - LCDC Y-Coordinate
+    uint8_t ly;
+
+    // 0xFF45: LYC - LY Compare
+    uint8_t lyc;
 
     // 0xFF47: BGP - Background Palette Data (non-CGB mode only)
     uint8_t bgp;

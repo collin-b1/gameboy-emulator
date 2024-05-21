@@ -1,5 +1,5 @@
 #pragma once
-#include <vector>
+#include <array>
 #include "cart.h"
 #include "ppu.h"
 #include "interrupt.h"
@@ -13,7 +13,7 @@ constexpr uint16_t HRAM_END = 0xFFFE;
 class MemoryBus
 {
 public:
-    MemoryBus();
+    MemoryBus(PPU&, InterruptManager&);
     ~MemoryBus();
     uint8_t bus_read(uint16_t);
     uint16_t bus_read_word(uint16_t);
@@ -21,11 +21,11 @@ public:
     void bus_write_word(uint16_t addr, uint16_t data);
     Cart& get_cart();
 private:
-    std::vector<uint8_t> wram;
-    std::vector<uint8_t> hram;
+    std::array<uint8_t, WRAM_END - WRAM_START + 1> wram;
+    std::array<uint8_t, HRAM_END - HRAM_START + 1> hram;
     uint8_t svbk;
 
     Cart cart;
-    PPU ppu;
-    InterruptManager imu;
+    PPU& ppu;
+    InterruptManager& imu;
 };

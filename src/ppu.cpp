@@ -1,10 +1,21 @@
 #include "ppu.h"
 
-PPU::PPU() : 
-    vram(VRAM_END - VRAM_START + 1), 
-    oam(OAM_END - OAM_START + 1),
-    lcdc(0), stat(0), 
-    scy(0), scx(0), bgp(0), 
+enum PPU_Mode : uint8_t
+{
+    HBLANK = 0,
+    VBLANK = 1,
+    OAM = 2,
+    VRAM = 3
+};
+
+PPU::PPU(InterruptManager& imu) : 
+    imu(imu),
+    vram{},
+    oam{},
+    lcdc(0),
+    scy(0), scx(0), 
+    ly(0), lyc(0),
+    bgp(0), 
     obp0(0), obp1(0), 
     wy(0), wx(0), key1(0), 
     vbk(0), 
@@ -16,20 +27,19 @@ PPU::PPU() :
 
 uint8_t PPU::read(uint16_t addr)
 {
-    if (addr >= VRAM_START && addr <= VRAM_END)
-    {
-        return vram[addr - VRAM_START];
-    }
-    else if (addr >= OAM_START && addr <= OAM_END)
-    {
-        return oam[addr - OAM_START];
-    }
     switch (addr)
     {
     case 0xFF40: return lcdc;
-    case 0xFF41: return stat;
+    case 0xFF41:
+    {
+        return 0x00
+            | mode
+            | (ly == lyc) << 2;
+    }
     case 0xFF42: return scy;
     case 0xFF43: return scx;
+    case 0xFF44: return 0x90; // ly
+    case 0xFF45: return lyc;
     case 0xFF47: return bgp;
     case 0xFF48: return obp0;
     case 0xFF49: return obp1;
@@ -46,27 +56,31 @@ uint8_t PPU::read(uint16_t addr)
     case 0xFF69: return bcpd;
     case 0xFF6A: return ocps;
     case 0xFF6B: return ocpd;
-    default: break;
+    default:
+    {
+        if (addr >= VRAM_START && addr <= VRAM_END)
+        {
+            return vram[addr - VRAM_START];
+        }
+        else if (addr >= OAM_START && addr <= OAM_END)
+        {
+            return oam[addr - OAM_START];
+        }
+        return 0;
     }
-    return 0;
+    }
 }
 
 void PPU::write(uint16_t addr, uint8_t data)
 {
-    if (addr >= VRAM_START && addr <= VRAM_END)
-    {
-        vram[addr - VRAM_START] = data;
-    }
-    else if (addr >= OAM_START && addr <= OAM_END)
-    {
-        oam[addr - OAM_START] = data;
-    }
     switch (addr)
     {
     case 0xFF40: lcdc = data; break;
-    case 0xFF41: stat = data; break;
+    case 0xFF41: /*stat = data;*/ break;
     case 0xFF42: scy = data; break;
     case 0xFF43: scx = data; break;
+    case 0xFF44: ly = data; break;
+    case 0xFF45: lyc = data; break;
     case 0xFF47: bgp = data; break;
     case 0xFF48: obp0 = data; break;
     case 0xFF49: obp1 = data; break;
@@ -83,6 +97,16 @@ void PPU::write(uint16_t addr, uint8_t data)
     case 0xFF69: bcpd = data; break;
     case 0xFF6A: ocps = data; break;
     case 0xFF6B: ocpd = data; break;
-    default: break;
+    default: 
+    {
+        if (addr >= VRAM_START && addr <= VRAM_END)
+        {
+            vram[addr - VRAM_START] = data;
+        }
+        else if (addr >= OAM_START && addr <= OAM_END)
+        {
+            oam[addr - OAM_START] = data;
+        }
+    }
     }
 }

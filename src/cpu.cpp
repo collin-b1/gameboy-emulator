@@ -43,7 +43,15 @@ uint8_t timings_cb[256] = {
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0xF0
 };
 
-CPU::CPU(MemoryBus& mmu) : registers(), cycles(0), opcode(0), mmu(mmu), is_halted(false), is_stopped(false), ime(false)
+CPU::CPU(MemoryBus& mmu, InterruptManager& imu) : 
+    registers(), 
+    cycles(0), 
+    opcode(0), 
+    mmu(mmu), 
+    imu(imu),
+    is_halted(false), 
+    is_stopped(false), 
+    ime(false)
 {}
 
 // Set registers to post-bootrom values
@@ -904,16 +912,16 @@ void CPU::LDH_C_A()
 // LD r16, imm16
 void CPU::LD_r16_imm16(uint16_t& r16dest)
 {
-    uint16_t nn = mmu.bus_read_word(registers.pc++);
-    registers.pc++;
+    uint16_t nn = mmu.bus_read_word(registers.pc);
+    registers.pc += 2;
     r16dest = nn;
 }
 
 // LD [imm16], SP
 void CPU::LD_imm16_SP()
 {
-    uint16_t imm16 = mmu.bus_read_word(registers.pc++);
-    registers.pc++;
+    uint16_t imm16 = mmu.bus_read_word(registers.pc);
+    registers.pc += 2;
     mmu.bus_write_word(imm16, registers.sp);
 }
 

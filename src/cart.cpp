@@ -2,15 +2,10 @@
 #include <fstream>
 #include <iostream>
 
-Cart::Cart() : headers()
-{
-    buffer = std::vector<uint8_t>(0x7FFF);
-}
-Cart::~Cart() {
-    Cart::buffer.clear();
-    Cart::buffer.shrink_to_fit();
-    Cart::buffer.~vector();
-}
+Cart::Cart() : 
+    headers(), 
+    buffer{}
+{}
 
 uint8_t Cart::read(uint16_t addr)
 {
@@ -39,18 +34,34 @@ bool Cart::load_rom(std::string &path)
     }
 
     rom.seekg(0, std::ios::end);
-    //buffer.resize(rom.tellg());
     rom.seekg(0, std::ios::beg);
     rom.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
     rom.close();
 
-    return true;
+    return load_header();
 }
 
 bool Cart::load_header()
 {
     headers = *reinterpret_cast<cart_headers*>(buffer.data() + HEADER_START);
 
+    uint8_t checksum = 0;
+    for (uint16_t address = 0x0134; address <= 0x014C; address++)
+    {
+        checksum = checksum - buffer[address] - 1;
+    }
+
+    if (headers.header_checksum != checksum)
+    {
+        std::cerr << "Checksum does not match!" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+void Cart::print_headers()
+{
     std::cout << "Title: " << headers.title << std::endl;
     std::cout << "Entrypoint: 0x" <<
         std::hex << static_cast<int>(headers.entrypoint[0]) << std::dec << " 0x" <<
@@ -65,19 +76,4 @@ bool Cart::load_header()
     std::cout << "Destination code: " << static_cast<int>(headers.destination_code) << std::endl;
     std::cout << "Old licensee code: " << static_cast<int>(headers.old_licensee_code) << std::endl;
     std::cout << "Mask ROM version: " << static_cast<int>(headers.mask_rom_version) << std::endl;
-
-    uint8_t checksum = 0;
-    for (uint16_t address = 0x0134; address <= 0x014C; address++)
-    {
-        checksum = checksum - buffer[address] - 1;
-    }
-
-    if (headers.header_checksum != checksum)
-    {
-        std::cerr << "Checksum does not match!" << std::endl;
-        return false;
-    }
-    std::cout << "Checksum matches!" << std::endl;
-
-    return true;
 }
