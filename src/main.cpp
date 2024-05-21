@@ -4,7 +4,7 @@
 
 int main(int argc, char **argv)
 {
-    std::string rom_name{"07-jr,jp,call,ret,rst.gb"}; // 06-ld r,r.gb
+    std::string rom_name{"06-ld r,r.gb"}; // 06-ld r,r.gb
 
     if (argc > 1)
     {

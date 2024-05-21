@@ -654,17 +654,19 @@ void CPU::LD_r16mem_imm8(uint16_t& r16)
 }
 
 // INC [r16]
-void CPU::INC_r16mem(uint16_t& r16)
+void CPU::INC_r16mem(uint16_t& r16mem)
 {
-    uint8_t r16mem = mmu.bus_read(r16);
-    INC_r8(r16mem);
+    uint8_t value = mmu.bus_read(r16mem);
+    INC_r8(value);
+    mmu.bus_write(r16mem, value);
 }
 
 // DEC [r16]
-void CPU::DEC_r16mem(uint16_t& r16)
+void CPU::DEC_r16mem(uint16_t& r16mem)
 {
-    uint8_t r16mem = mmu.bus_read(r16);
-    DEC_r8(r16mem);
+    uint8_t value = mmu.bus_read(r16mem);
+    DEC_r8(value);
+    mmu.bus_write(r16mem, value);
 }
 
 // BIT b3, r8
@@ -676,10 +678,26 @@ void CPU::BIT_b3_r8(uint8_t bit, uint8_t &r8source)
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(1);
 }
+void CPU::BIT_b3_r16mem(uint8_t bit, uint16_t &r16mem)
+{
+    uint8_t value = mmu.bus_read(r16mem);
+    uint8_t mask = (1 << bit);
+    bool set = !!(mask & value);
+
+    registers.set_zero_flag(set);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(1);
+}
 
 void CPU::RES_b3_r8(uint8_t bit, uint8_t& r8)
 {
     r8 &= ~(1 << bit);
+}
+void CPU::RES_b3_r16mem(uint8_t bit, uint16_t& r16mem)
+{
+    uint8_t value = mmu.bus_read(r16mem);
+    value &= ~(1 << bit);
+    mmu.bus_write(r16mem, value);
 }
 
 void CPU::SET_b3_r8(uint8_t bit, uint8_t& r8)
@@ -687,91 +705,11 @@ void CPU::SET_b3_r8(uint8_t bit, uint8_t& r8)
     r8 |= 1 << bit;
 }
 
-void CPU::RLC_r16mem(uint16_t& r16mem)
+void CPU::SET_b3_r16mem(uint8_t bit, uint16_t &r16mem)
 {
     uint8_t value = mmu.bus_read(r16mem);
-    uint8_t msbit = value >> 7;
-    value <<= 1;
-    value |= msbit;
+    value |= 1 << bit;
     mmu.bus_write(r16mem, value);
-
-    registers.set_zero_flag(value == 0);
-    registers.set_sub_flag(0);
-    registers.set_half_carry_flag(0);
-    registers.set_carry_flag(msbit);
-}
-
-void CPU::RRC_r16mem(uint16_t& r16mem)
-{
-    uint8_t value = mmu.bus_read(r16mem);
-    uint8_t lsbit = value & 1;
-    value >>= 1;
-    value |= (lsbit << 7);
-    mmu.bus_write(r16mem, value);
-
-    registers.set_zero_flag(value == 0);
-    registers.set_sub_flag(0);
-    registers.set_half_carry_flag(0);
-    registers.set_carry_flag(lsbit);
-}
-
-// RL [r16mem]
-void CPU::RL_r16mem(uint16_t& r16mem)
-{
-    uint8_t value = mmu.bus_read(r16mem);
-    uint8_t carry = registers.get_carry_flag();
-    uint8_t msbit = value >> 7;
-    value <<= 1;
-    value |= carry;
-    mmu.bus_write(r16mem, value);
-
-    registers.set_zero_flag(value == 0);
-    registers.set_sub_flag(0);
-    registers.set_half_carry_flag(0);
-    registers.set_carry_flag(msbit);
-}
-
-void CPU::RR_r16mem(uint16_t& r16mem)
-{
-    uint8_t value = mmu.bus_read(r16mem);
-    auto carry = registers.get_carry_flag();
-    uint8_t lsbit = value & 1;
-
-}
-
-void CPU::SLA_r16mem(uint16_t&)
-{
-    exit(7);
-}
-
-void CPU::SRA_r16mem(uint16_t&)
-{
-    exit(7);
-}
-
-void CPU::SWAP_r16mem(uint16_t&)
-{
-    exit(7);
-}
-
-void CPU::SRL_r16mem(uint16_t&)
-{
-    exit(7);
-}
-
-void CPU::BIT_b3_r16mem(uint8_t, uint16_t&)
-{
-    exit(7);
-}
-
-void CPU::RES_b3_r16mem(uint8_t, uint16_t&)
-{
-    exit(7);
-}
-
-void CPU::SET_b3_r16mem(uint8_t, uint16_t&)
-{
-    exit(7);
 }
 
 // INC r8
@@ -929,7 +867,7 @@ void CPU::RLA()
 }
 
 // LD A, (r16)
-void CPU::LD_A_r16mem(uint16_t& r16source)
+void CPU::LD_A_r16mem(uint16_t &r16source)
 {
     uint8_t r16mem = mmu.bus_read(r16source);
     registers.af.msb = r16mem;
@@ -1076,6 +1014,19 @@ void CPU::RLC_r8(uint8_t& r8)
     registers.set_half_carry_flag(0);
     registers.set_carry_flag(msbit);
 }
+void CPU::RLC_r16mem(uint16_t& r16mem)
+{
+    uint8_t value = mmu.bus_read(r16mem);
+    uint8_t msbit = value >> 7;
+    value <<= 1;
+    value |= msbit;
+    mmu.bus_write(r16mem, value);
+
+    registers.set_zero_flag(value == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(0);
+    registers.set_carry_flag(msbit);
+}
 
 void CPU::RRC_r8(uint8_t& r8)
 {
@@ -1088,14 +1039,43 @@ void CPU::RRC_r8(uint8_t& r8)
     registers.set_half_carry_flag(0);
     registers.set_carry_flag(lsbit);
 }
+void CPU::RRC_r16mem(uint16_t& r16mem)
+{
+    uint8_t value = mmu.bus_read(r16mem);
+    uint8_t lsbit = value & 1;
+    value >>= 1;
+    value |= (lsbit << 7);
+    mmu.bus_write(r16mem, value);
+
+    registers.set_zero_flag(value == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(0);
+    registers.set_carry_flag(lsbit);
+}
 
 void CPU::RL_r8(uint8_t& r8)
 {
-    uint8_t msbit = r8 >> 7;
+    const uint8_t carry = registers.get_carry_flag();
+    const uint8_t msbit = r8 >> 7;
     r8 <<= 1;
-    r8 |= (uint8_t)registers.get_carry_flag();
+    r8 |= carry;
 
     registers.set_zero_flag(r8 == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(0);
+    registers.set_carry_flag(msbit);
+}
+// RL [r16mem]
+void CPU::RL_r16mem(uint16_t& r16mem)
+{
+    uint8_t value = mmu.bus_read(r16mem);
+    const uint8_t carry = registers.get_carry_flag();
+    const uint8_t msbit = value >> 7;
+    value <<= 1;
+    value |= carry;
+    mmu.bus_write(r16mem, value);
+
+    registers.set_zero_flag(value == 0);
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(0);
     registers.set_carry_flag(msbit);
@@ -1103,11 +1083,26 @@ void CPU::RL_r8(uint8_t& r8)
 
 void CPU::RR_r8(uint8_t& r8)
 {
-    uint8_t lsbit = r8 & 1;
+    const uint8_t lsbit = r8 & 1;
+    const uint8_t carry = registers.get_carry_flag();
     r8 >>= 1;
-    r8 |= ((uint8_t)registers.get_carry_flag() << 7);
+    r8 |= carry << 7;
 
     registers.set_zero_flag(r8 == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(0);
+    registers.set_carry_flag(lsbit);
+}
+void CPU::RR_r16mem(uint16_t& r16mem)
+{
+    uint8_t value = mmu.bus_read(r16mem);
+    const uint8_t lsbit = value & 1;
+    const uint8_t carry = registers.get_carry_flag();
+    value >>= 1;
+    value |= carry << 7;
+    mmu.bus_write(r16mem, value);
+
+    registers.set_zero_flag(value == 0);
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(0);
     registers.set_carry_flag(lsbit);
@@ -1119,6 +1114,18 @@ void CPU::SLA_r8(uint8_t& r8)
     r8 <<= 1;
 
     registers.set_zero_flag(r8 == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(0);
+    registers.set_carry_flag(msbit);
+}
+void CPU::SLA_r16mem(uint16_t& r16mem)
+{
+    uint8_t value = mmu.bus_read(r16mem);
+    uint8_t msbit = value >> 7;
+    value <<= 1;
+    mmu.bus_write(r16mem, value);
+
+    registers.set_zero_flag(value == 0);
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(0);
     registers.set_carry_flag(msbit);
@@ -1135,11 +1142,41 @@ void CPU::SRA_r8(uint8_t& r8)
     registers.set_half_carry_flag(0);
     registers.set_carry_flag(lsbit);
 }
+void CPU::SRA_r16mem(uint16_t& r16mem)
+{
+    uint8_t value = mmu.bus_read(r16mem);
+    uint8_t lsbit = value & 1;
+    uint8_t msbit = value & 0x80;
+    value >>= 1;
+    value |= msbit;
+    mmu.bus_write(r16mem, value);
+
+    registers.set_zero_flag(value == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(0);
+    registers.set_carry_flag(lsbit);
+}
 
 void CPU::SWAP_r8(uint8_t& r8)
 {
-    r8 = (r8 >> 4) | (r8 << 4);
+    uint8_t lsnibble = r8 & 0x0F;
+    uint8_t msnibble = r8 & 0xF0;
+    r8 = (msnibble >> 4) | (lsnibble << 4);
+
     registers.set_zero_flag(r8 == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(0);
+    registers.set_carry_flag(0);
+}
+void CPU::SWAP_r16mem(uint16_t& r16mem)
+{
+    uint8_t value = mmu.bus_read(r16mem);
+    uint8_t lsnibble = value & 0x0F;
+    uint8_t msnibble = value & 0xF0;
+    value = (msnibble >> 4) | (lsnibble << 4);
+    mmu.bus_write(r16mem, value);
+
+    registers.set_zero_flag(value == 0);
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(0);
     registers.set_carry_flag(0);
@@ -1150,6 +1187,18 @@ void CPU::SRL_r8(uint8_t& r8)
     uint8_t lsbit = r8 & 1;
     r8 >>= 1;
     registers.set_zero_flag(r8 == 0);
+    registers.set_sub_flag(0);
+    registers.set_half_carry_flag(0);
+    registers.set_carry_flag(lsbit);
+}
+void CPU::SRL_r16mem(uint16_t& r16mem)
+{
+    uint8_t value = mmu.bus_read(r16mem);
+    uint8_t lsbit = value & 1;
+    value >>= 1;
+    mmu.bus_write(r16mem, value);
+
+    registers.set_zero_flag(value == 0);
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(0);
     registers.set_carry_flag(lsbit);
