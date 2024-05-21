@@ -73,11 +73,6 @@ void CPU::next_instruction()
     execute_opcode(opcode);
 }
 
-Registers CPU::get_registers() const
-{
-    return Registers();
-}
-
 void CPU::debug_print()
 {
     registers.print_registers();
@@ -106,6 +101,8 @@ void CPU::inline_debug_print()
 void CPU::execute_opcode(uint8_t opcode)
 {
     //std::cout << "\nApplying Opcode 0x" << std::hex << static_cast<int>(opcode) << std::dec << std::endl;
+
+    // TODO: Generalize rows to blocks of 8 to make less redundant.
     switch (opcode)
     {
     case 0x00: NOP(); break;
@@ -331,7 +328,6 @@ void CPU::execute_opcode(uint8_t opcode)
     case 0xCA: JP_cc_imm16(registers.get_zero_flag()); break;
     case 0xCB:
     {
-        //std::cout << "Prefixed Opcode found, decoding..." << std::endl;
         uint8_t cb_opcode = mmu.bus_read(registers.pc++);
         execute_cb_opcode(cb_opcode);
         break;

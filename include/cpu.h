@@ -18,7 +18,6 @@ public:
     void execute_opcode(uint8_t);
     void execute_cb_opcode(uint8_t);
 
-    Registers get_registers() const;
     void debug_print();
     void inline_debug_print();
 

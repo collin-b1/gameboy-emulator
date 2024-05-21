@@ -3,6 +3,9 @@
 #include <vector>
 #include <cstdint>
 
+constexpr uint16_t ROM_START = 0x0000;
+constexpr uint16_t ROM_END = 0x7FFF;
+
 constexpr uint16_t HEADER_START = 0x100;
 constexpr uint16_t HEADER_END = 0x14F;
 

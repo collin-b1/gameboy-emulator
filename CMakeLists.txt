@@ -15,7 +15,7 @@ set(ROMS_DIRECTORY "${CMAKE_SOURCE_DIR}/assets/roms/")
 add_definitions(-DROMS_DIRECTORY="${ROMS_DIRECTORY}")
 
 # Add source files
-file(GLOB SOURCES "src/*.cpp")
+file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 # Define the executable
-add_executable(GameBoyEmulator src/main.cpp ${SOURCES})
+add_executable(GameBoyEmulator ${SOURCES})
