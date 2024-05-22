@@ -1,4 +1,5 @@
 #include "ppu.h"
+#include <iostream>
 
 enum PPU_Mode : uint8_t
 {

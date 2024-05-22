@@ -2,12 +2,13 @@
 #include "cart.h"
 #include "cpu.h"
 #include "ppu.h"
+#include "renderer.h"
 
 #include <iostream>
 
 int main(int argc, char* argv[])
 {
-    std::string rom_name{"tetris.gb"};
+    std::string rom_name{"06-ld r,r.gb"};
 
     if (argc > 1)
     {
@@ -31,8 +32,11 @@ int main(int argc, char* argv[])
     
     if (rom_name != "dmg_boot.bin")
     {
-        cpu.init();
+        cpu.init_post_boot();
     }
+
+    // Renderer
+    Renderer renderer{};
 
     bool cpu_running = true;
     while (cpu_running)

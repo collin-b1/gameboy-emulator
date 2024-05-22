@@ -19,7 +19,8 @@ uint8_t Cart::read(uint16_t addr)
 
 void Cart::write(uint16_t addr, uint8_t data)
 {
-    buffer[addr] = data;
+    // buffer[addr] = data;
+    exit(7);
 }
 
 bool Cart::load_rom(std::string &path)

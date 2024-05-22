@@ -13,7 +13,7 @@ public:
     CPU(MemoryBus&, InterruptManager&);
     //~CPU();
 
-    void init();
+    void init_post_boot();
 
     void next_instruction();
     void execute_opcode(uint8_t);

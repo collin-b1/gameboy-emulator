@@ -55,7 +55,7 @@ CPU::CPU(MemoryBus& mmu, InterruptManager& imu) :
 {}
 
 // Set registers to post-bootrom values
-void CPU::init()
+void CPU::init_post_boot()
 {
     registers.af.word = 0x01B0;
     registers.bc.word = 0x0013;

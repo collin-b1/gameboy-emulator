@@ -5,6 +5,8 @@ project(GameBoyEmulator)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+find_package(SDL2 REQUIRED)
+
 # Include directories
 include_directories(include)
 
@@ -19,3 +21,6 @@ file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 # Define the executable
 add_executable(GameBoyEmulator ${SOURCES})
+
+# Link SDL2
+target_link_libraries(GameBoyEmulator SDL2::SDL2 SDL2::SDL2main)
