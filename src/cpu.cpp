@@ -69,7 +69,20 @@ uint8_t CPU::next_instruction()
 {
     if (is_halted)
     {
-        return 0;
+        if (imu.interrupt_requested())
+        {
+            is_halted = 0;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    if (ime_req)
+    {
+        ime_req = 0;
+        ime = 1;
     }
 
     inline_debug_print();
@@ -560,7 +573,9 @@ void CPU::RET_cc(bool condition_met)
 void CPU::RETI()
 {
     RET();
-    EI();
+
+    // RETI doesn't have the 1 cycle delay that EI has
+    ime = 1;
 }
 
 void CPU::JP_cc_imm16(bool condition_met)
@@ -677,12 +692,14 @@ void CPU::STOP()
 
 void CPU::DI()
 {
+    // DI doesn't have the 1 cycle delay that EI has
     ime = 0;
 }
 
 void CPU::EI()
 {
-    ime = 1;
+    // EI enables IME the following cycle, not immediately.
+    ime_req = 1;
 }
 
 // LD [r16], imm8

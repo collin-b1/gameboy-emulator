@@ -9,8 +9,14 @@ enum PPU_Mode : uint8_t
     MODE_VRAM = 3
 };
 
+void PPU::tick()
+{
+
+}
+
 PPU::PPU(InterruptManager& imu) : 
     imu(imu),
+    renderer{},
     mode(MODE_HBLANK),
     vram(VRAM_END - VRAM_START + 1),
     oam(OAM_END - OAM_START + 1),
@@ -27,7 +33,7 @@ PPU::PPU(InterruptManager& imu) :
     ocps(0), ocpd(0)
 {}
 
-uint8_t PPU::read(uint16_t addr)
+uint8_t PPU::read(uint16_t addr) const
 {
     switch (addr)
     {
@@ -60,15 +66,18 @@ uint8_t PPU::read(uint16_t addr)
     case 0xFF6B: return ocpd;
     default:
     {
-        if (addr >= VRAM_START && addr <= VRAM_END)
+        if (mode != MODE_VRAM && addr >= VRAM_START && addr <= VRAM_END)
         {
             return vram[addr - VRAM_START];
         }
-        else if (addr >= OAM_START && addr <= OAM_END)
+        else if (mode != MODE_OAM && mode != MODE_VRAM && addr >= OAM_START && addr <= OAM_END)
         {
             return oam[addr - OAM_START];
         }
-        return 0;
+        else
+        {
+            return 0;
+        }
     }
     }
 }

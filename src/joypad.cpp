@@ -4,7 +4,7 @@ Joypad::Joypad() :
     joyp()
 {}
 
-uint8_t Joypad::read(uint16_t addr)
+uint8_t Joypad::read(uint16_t addr) const
 {
     if (addr == 0xFF00)
     {

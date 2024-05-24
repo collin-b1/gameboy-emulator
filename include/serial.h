@@ -1,14 +1,15 @@
 #pragma once
 
 #include <cstdint>
+#include "memory.h"
 
-class Serial
+class Serial : public IMemory
 {
 public:
     Serial();
+    uint8_t read(uint16_t) const override;
+    void write(uint16_t, uint8_t) override;
 
-    uint8_t read(uint16_t);
-    void write(uint16_t, uint8_t);
 private:
     uint8_t sb, sc;
 };

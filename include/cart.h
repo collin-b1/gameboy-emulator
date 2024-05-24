@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include "memory.h"
 
 constexpr uint16_t ROM_START = 0x0000;
 constexpr uint16_t ROM_END = 0x7FFF;
@@ -66,19 +67,22 @@ struct CartHeaders
     uint16_t global_checksum;           // 0x14E-0x14F
 };
 
-class Cart
+class Cart : public IMemory
 {
 public:
     Cart();
 
     bool load_rom(std::string&);
+    bool load_boot_rom(std::string&);
     bool load_header();
-    uint8_t read(uint16_t);
-    void write(uint16_t, uint8_t);
-    void print_headers();
+    uint8_t read(uint16_t) const override;
+    void write(uint16_t, uint8_t) override;
+    void print_headers() const;
 
 private:
     std::string name;
     CartHeaders headers;
-    std::vector<uint8_t> buffer;
+    std::vector<uint8_t> rom;
+    std::vector<uint8_t> boot_rom;
+    uint8_t bank;
 };

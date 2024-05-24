@@ -9,7 +9,7 @@ Timer::Timer() :
     tac(0)
 {}
 
-uint8_t Timer::read(uint16_t addr)
+uint8_t Timer::read(uint16_t addr) const
 {
     switch (addr)
     {

@@ -2,7 +2,6 @@
 #include "cart.h"
 #include "cpu.h"
 #include "ppu.h"
-#include "renderer.h"
 
 #include <memory>
 #include <iostream>
@@ -10,27 +9,31 @@
 Gobby::Gobby() : 
     cart{},
     interrupts{},
-    renderer{},
     ppu(PPU{ interrupts }),
     mmu(MMU{ cart, ppu, interrupts }),
     cpu(CPU{ mmu, interrupts })
 {}
 
-bool Gobby::load_rom(std::string rom_name)
+bool Gobby::load_game(std::string rom_name, std::string boot_rom)
 {
     std::string rom_path{ ROMS_DIRECTORY + rom_name };
+    std::string boot_rom_path{ ROMS_DIRECTORY + boot_rom };
 
     bool rom_loaded = cart.load_rom(rom_path);
-    // cart.print_headers();
+    bool boot_rom_loaded = cart.load_boot_rom(boot_rom_path);
 
     if (!rom_loaded)
     {
         return false;
     }
 
-    if (rom_name != "dmg_boot.bin")
+    if (!boot_rom_loaded)
     {
+        // Load CPU to post-boot state
         cpu.init_post_boot();
+
+        // Disable Boot ROM
+        mmu.bus_write(0xFF50, 0x01);
     }
 
     return true;
@@ -51,11 +54,11 @@ int main(int argc, char* argv[])
     }
 
     Gobby gobby{};
-    bool rom_loaded = gobby.load_rom(rom_name);
+    bool game_loaded = gobby.load_game(rom_name, "dmg_boot.bin");
 
-    if (!rom_loaded)
+    if (!game_loaded)
     {
-        std::cout << "Couldn't load rom." << std::endl;
+        std::cout << "Couldn't load ROM or Boot ROM." << std::endl;
     }
 
     bool cpu_running = true;

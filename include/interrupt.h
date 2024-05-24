@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include "memory.h"
 
 enum INTERRUPT_SOURCES
 {
@@ -11,17 +12,33 @@ enum INTERRUPT_SOURCES
     INTERRUPT_JOYPAD = 0x60
 };
 
-class InterruptManager
+class InterruptManager : IMemory
 {
 public:
     InterruptManager();
 
-    uint8_t read(uint16_t addr);
-    void write(uint16_t addr, uint8_t data);
+    uint8_t read(uint16_t addr) const override;
+    void write(uint16_t addr, uint8_t data) override;
+    uint8_t interrupt_requested();
+
 private:
     // 0xFF0F: IF - Interrupt Flag
-    bool vblank_req, lcd_req, timer_req, serial_req, joypad_req;
+    union
+    {
+        uint8_t iflag;
+        struct
+        {
+            bool _b7, _b6, _b5, vblank_req, lcd_req, timer_req, serial_req, joypad_req;
+        };
+    } iflag;
 
     // 0xFFFF: IE - Interrupt Enable
-    bool vblank, lcd, timer, serial, joypad;
+    union
+    {
+        uint8_t ie;
+        struct
+        {
+            bool _b7, _b6, _b5, vblank, lcd, timer, serial, joypad;
+        };
+    } ie;
 };

@@ -6,7 +6,7 @@ Serial::Serial() :
     sb(0), sc(0)
 {}
 
-uint8_t Serial::read(uint16_t addr)
+uint8_t Serial::read(uint16_t addr) const
 {
     switch (addr)
     {

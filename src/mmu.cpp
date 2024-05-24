@@ -8,13 +8,13 @@ MMU::MMU(Cart& cart, PPU& ppu, InterruptManager& imu) :
     imu(imu),
     wram(WRAM_END - WRAM_START + 1),
     hram(HRAM_END - HRAM_START + 1),
-    timer(Timer{}),
-    serial(Serial{}),
-    joypad(Joypad{}),
+    timer(),
+    serial(),
+    joypad(),
     svbk(0)
 {}
 
-uint8_t MMU::bus_read(uint16_t addr)
+uint8_t MMU::bus_read(uint16_t addr) const
 {
     // Cartridge ROM
     if (addr >= 0x0000 && addr <= 0x7FFF)
@@ -192,6 +192,7 @@ void MMU::bus_write(uint16_t addr, uint8_t data)
     }
 
     // I/O Registers
+    // Joypad
     else if (addr == 0xFF00)
     {
         joypad.write(addr, data);
@@ -236,6 +237,7 @@ void MMU::bus_write(uint16_t addr, uint8_t data)
     // Bootrom toggle (non-zero is disabled)
     else if (addr == 0xFF50)
     {
+        std::cout << "Boot ROM disabled!" << std::endl;
         cart.write(addr, data);
     }
 
@@ -276,7 +278,7 @@ void MMU::bus_write(uint16_t addr, uint8_t data)
     }
 }
 
-uint16_t MMU::bus_read_word(uint16_t addr)
+uint16_t MMU::bus_read_word(uint16_t addr) const
 {
     return (0xFF & bus_read(addr) | (bus_read(addr + 1) << 8));
 }

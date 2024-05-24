@@ -19,8 +19,8 @@ class MMU
 {
 public:
     MMU(Cart&, PPU&, InterruptManager&);
-    uint8_t bus_read(uint16_t);
-    uint16_t bus_read_word(uint16_t);
+    uint8_t bus_read(uint16_t) const;
+    uint16_t bus_read_word(uint16_t) const;
     void bus_write(uint16_t addr, uint8_t data);
     void bus_write_word(uint16_t addr, uint16_t data);
     bool load_rom(std::string path);
