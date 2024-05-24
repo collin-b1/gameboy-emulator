@@ -21,7 +21,7 @@ bool Gobby::load_rom(std::string rom_name)
     std::string rom_path{ ROMS_DIRECTORY + rom_name };
 
     bool rom_loaded = cart.load_rom(rom_path);
-    cart.print_headers();
+    // cart.print_headers();
 
     if (!rom_loaded)
     {
@@ -43,7 +43,7 @@ void Gobby::tick_systems()
 
 int main(int argc, char* argv[])
 {
-    std::string rom_name{"06-ld r,r.gb"};
+    std::string rom_name{"tetris.gb"};
 
     if (argc > 1)
     {

@@ -64,9 +64,66 @@ uint8_t MMU::bus_read(uint16_t addr)
         return joypad.read(addr);
     }
 
+    // Serial
+    else if (addr >= 0xFF01 && addr <= 0xFF02)
+    {
+        return serial.read(addr);
+    }
+
+    // Timer
     else if (addr >= 0xFF04 && addr <= 0xFF07)
     {
         return timer.read(addr);
+    }
+
+    // Audio
+    else if (addr >= 0xFF10 && addr <= 0xFF26)
+    {
+        // TODO: Implement Audio
+        return 0;
+    }
+
+    // Wave pattern
+    else if (addr >= 0xFF30 && addr <= 0xFF3F)
+    {
+        // TODO: Implement Audio
+        return 0;
+    }
+
+    // LCD Control, Status, Pos, Scrolling, Palettes
+    else if (addr >= 0xFF40 && addr <= 0xFF4B)
+    {
+        return ppu.read(addr);
+    }
+
+    // VRAM Bank Select
+    else if (addr == 0xFF4F)
+    {
+        return ppu.read(addr);
+    }
+
+    // Bootrom toggle (non-zero is disabled)
+    else if (addr == 0xFF50)
+    {
+        return cart.read(addr);
+    }
+
+    // VRAM DMA
+    else if (addr >= 0xFF51 && addr <= 0xFF55)
+    {
+        return ppu.read(addr);
+    }
+
+    // BG / OBJ Palletes
+    else if (addr >= 0xFF68 && addr <= 0xFF6B)
+    {
+        return ppu.read(addr);
+    }
+
+    // WRAM Bank Select (SVBK)
+    else if (addr == 0xFF70)
+    {
+        return svbk;
     }
 
     // Interrupt Flag (IF)
@@ -90,21 +147,9 @@ uint8_t MMU::bus_read(uint16_t addr)
     return 0;
 }
 
-uint16_t MMU::bus_read_word(uint16_t addr)
-{
-    return (0xFF & bus_read(addr) | (bus_read(addr + 1) << 8));
-}
-
 void MMU::bus_write(uint16_t addr, uint8_t data)
 {
-    /*if (addr >= 0xC000 && addr <= 0xDFFF)
-    {
-        std::cout << "Write " << std::hex << (int)data << std::endl;
-        std::cout << std::endl;
-    }*/
-    //std::cout << "Writing value 0x" << std::hex << (int)data << " to address: 0x" << std::hex << (int)addr << std::dec << std::endl;
-    
-    // ROM Bank 0-n
+    // Cartridge ROM
     if (addr >= 0x0000 && addr <= 0x7FFF)
     {
         cart.write(addr, data);
@@ -116,10 +161,22 @@ void MMU::bus_write(uint16_t addr, uint8_t data)
         ppu.write(addr, data);
     }
 
+    // RAM Bank
+    else if (addr >= 0xA000 && addr <= 0xBFFF)
+    {
+        cart.write(addr, data);
+    }
+
     // Working RAM (WRAM)
     else if (addr >= 0xC000 && addr <= 0xDFFF)
     {
         wram[addr - 0xC000] = data;
+    }
+
+    // Echo RAM (shouldn't be used)
+    else if (addr >= 0xE000 && addr <= 0xFDFF)
+    {
+        wram[addr - 0xE000] = data;
     }
 
     // Object Attribute Memory (OAM)
@@ -128,14 +185,85 @@ void MMU::bus_write(uint16_t addr, uint8_t data)
         ppu.write(addr, data);
     }
 
+    // Unusable Memory
+    else if (addr >= 0xFEA0 && addr <= 0xFEFF)
+    {
+        // Do nothing
+    }
+
     // I/O Registers
-    else if (addr >= 0xFF00 && addr <= 0xFF7F)
+    else if (addr == 0xFF00)
+    {
+        joypad.write(addr, data);
+    }
+
+    // Serial
+    else if (addr >= 0xFF01 && addr <= 0xFF02)
+    {
+        serial.write(addr, data);
+    }
+
+    // Timer
+    else if (addr >= 0xFF04 && addr <= 0xFF07)
+    {
+        timer.write(addr, data);
+    }
+
+    // Audio
+    else if (addr >= 0xFF10 && addr <= 0xFF26)
+    {
+        // TODO: Implement Audio
+    }
+
+    // Wave pattern
+    else if (addr >= 0xFF30 && addr <= 0xFF3F)
+    {
+        // TODO: Implement Audio
+    }
+
+    // LCD Control, Status, Pos, Scrolling, Palettes
+    else if (addr >= 0xFF40 && addr <= 0xFF4B)
     {
         ppu.write(addr, data);
+    }
+
+    // VRAM Bank Select
+    else if (addr == 0xFF4F)
+    {
+        ppu.write(addr, data);
+    }
+
+    // Bootrom toggle (non-zero is disabled)
+    else if (addr == 0xFF50)
+    {
+        cart.write(addr, data);
+    }
+
+    // VRAM DMA
+    else if (addr >= 0xFF51 && addr <= 0xFF55)
+    {
+        ppu.write(addr, data);
+    }
+
+    // BG / OBJ Palletes
+    else if (addr >= 0xFF68 && addr <= 0xFF6B)
+    {
+        ppu.write(addr, data);
+    }
+
+    // WRAM Bank Select (SVBK)
+    else if (addr == 0xFF70)
+    {
+        svbk = data;
+    }
+
+    // Interrupt Flag (IF)
+    else if (addr == 0xFF0F)
+    {
         imu.write(addr, data);
     }
 
-    // High RAM
+    // High RAM (HRAM)
     else if (addr >= 0xFF80 && addr <= 0xFFFE)
     {
         hram[addr - 0xFF80] = data;
@@ -146,6 +274,11 @@ void MMU::bus_write(uint16_t addr, uint8_t data)
     {
         imu.write(addr, data);
     }
+}
+
+uint16_t MMU::bus_read_word(uint16_t addr)
+{
+    return (0xFF & bus_read(addr) | (bus_read(addr + 1) << 8));
 }
 
 void MMU::bus_write_word(uint16_t addr, uint16_t data)
