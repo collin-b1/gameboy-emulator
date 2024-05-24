@@ -4,7 +4,7 @@
 
 Cart::Cart() : 
     headers(), 
-    buffer{}
+    buffer(ROM_END - ROM_START + 1)
 {}
 
 uint8_t Cart::read(uint16_t addr)

@@ -1,5 +1,5 @@
 #pragma once
-#include <array>
+#include <vector>
 #include <memory>
 
 #include "cart.h"
@@ -25,8 +25,8 @@ public:
     void bus_write_word(uint16_t addr, uint16_t data);
     bool load_rom(std::string path);
 private:
-    std::array<uint8_t, WRAM_END - WRAM_START + 1> wram;
-    std::array<uint8_t, HRAM_END - HRAM_START + 1> hram;
+    std::vector<uint8_t> wram;
+    std::vector<uint8_t> hram;
     uint8_t svbk;
 
     Cart& cart;

@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include <array>
+#include <vector>
 #include <cstdint>
 
 constexpr uint16_t ROM_START = 0x0000;
@@ -80,5 +80,5 @@ public:
 private:
     std::string name;
     CartHeaders headers;
-    std::array<uint8_t, ROM_END - ROM_START + 1> buffer;
+    std::vector<uint8_t> buffer;
 };

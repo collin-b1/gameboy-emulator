@@ -12,8 +12,8 @@ enum PPU_Mode : uint8_t
 PPU::PPU(InterruptManager& imu) : 
     imu(imu),
     mode(MODE_HBLANK),
-    vram{},
-    oam{},
+    vram(VRAM_END - VRAM_START + 1),
+    oam(OAM_END - OAM_START + 1),
     lcdc(0),
     scy(0), scx(0), 
     ly(0), lyc(0),

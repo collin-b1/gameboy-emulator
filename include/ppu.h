@@ -1,6 +1,6 @@
 #pragma once
 
-#include <array>
+#include <vector>
 #include <cstdint>
 
 #include "interrupt.h"
@@ -25,10 +25,10 @@ private:
     InterruptManager& imu;
 
     // 0x8000 - 0x9FFF: VRAM
-    std::array<uint8_t, VRAM_END - VRAM_START + 1> vram;
+    std::vector<uint8_t> vram;
 
     // 0xFE00 - 0xFE9F: OAM
-    std::array<uint8_t, OAM_END - OAM_START + 1> oam;
+    std::vector<uint8_t> oam;
 
     // 0xFF40: LCDC - LCD Control
     uint8_t lcdc;
