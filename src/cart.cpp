@@ -9,12 +9,7 @@ Cart::Cart() :
 
 uint8_t Cart::read(uint16_t addr)
 {
-    if (addr > buffer.size())
-    {
-        std::cerr << "Address out of bounds: " << std::hex << addr << std::endl;
-        exit(1);
-    }
-    return buffer[addr];
+    return buffer.at(addr);
 }
 
 void Cart::write(uint16_t addr, uint8_t data)
@@ -44,7 +39,7 @@ bool Cart::load_rom(std::string &path)
 
 bool Cart::load_header()
 {
-    headers = *reinterpret_cast<cart_headers*>(buffer.data() + HEADER_START);
+    headers = *reinterpret_cast<CartHeaders*>(buffer.data() + HEADER_START);
 
     uint8_t checksum = 0;
     for (uint16_t address = 0x0134; address <= 0x014C; address++)
@@ -63,7 +58,8 @@ bool Cart::load_header()
 
 void Cart::print_headers()
 {
-    std::cout << "Title: " << headers.title << std::endl;
+    std::cout << "Title: " << headers.title.title_only << std::endl;
+    std::cout << "CGB flag: 0x" << std::hex << (int)headers.title.cgb << std::endl;
     std::cout << "Entrypoint: 0x" <<
         std::hex << static_cast<int>(headers.entrypoint[0]) << std::dec << " 0x" <<
         std::hex << static_cast<int>(headers.entrypoint[1]) << std::dec << " 0x" <<

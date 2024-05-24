@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.10)
-project(GameBoyEmulator)
+project(Gobby)
 
 # Specify C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -20,7 +20,7 @@ add_definitions(-DROMS_DIRECTORY="${ROMS_DIRECTORY}")
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 # Define the executable
-add_executable(GameBoyEmulator ${SOURCES})
+add_executable(Gobby ${SOURCES})
 
 # Link SDL2
-target_link_libraries(GameBoyEmulator SDL2::SDL2 SDL2::SDL2main)
+target_link_libraries(Gobby SDL2::SDL2 SDL2::SDL2main)

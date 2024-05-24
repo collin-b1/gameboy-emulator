@@ -43,12 +43,12 @@ uint8_t timings_cb[256] = {
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0xF0
 };
 
-CPU::CPU(MemoryBus& mmu, InterruptManager& imu) : 
+CPU::CPU(MMU& mmu, InterruptManager& imu) :
     registers(), 
-    cycles(0), 
     opcode(0), 
     mmu(mmu), 
     imu(imu),
+    ime_req(false),
     is_halted(false), 
     is_stopped(false), 
     ime(false)
@@ -65,20 +65,18 @@ void CPU::init_post_boot()
     registers.pc = 0x0100;
 }
 
-void CPU::next_instruction()
+uint8_t CPU::next_instruction()
 {
     if (is_halted)
     {
-        return;
+        return 0;
     }
-
-    uint8_t opcode = mmu.bus_read(registers.pc);
 
     inline_debug_print();
 
-    registers.pc++;
+    uint8_t opcode = mmu.bus_read(registers.pc++);
 
-    execute_opcode(opcode);
+    return execute_opcode(opcode);
 }
 
 void CPU::debug_print()
@@ -106,10 +104,9 @@ void CPU::inline_debug_print()
     );
 }
 
-void CPU::execute_opcode(uint8_t opcode)
+uint8_t CPU::execute_opcode(uint8_t opcode)
 {
-    //std::cout << "\nApplying Opcode 0x" << std::hex << static_cast<int>(opcode) << std::dec << std::endl;
-
+    uint8_t cycles = timings_u[opcode];
     // TODO: Generalize rows to blocks of 8 to make less redundant.
     switch (opcode)
     {
@@ -337,7 +334,7 @@ void CPU::execute_opcode(uint8_t opcode)
     case 0xCB:
     {
         uint8_t cb_opcode = mmu.bus_read(registers.pc++);
-        execute_cb_opcode(cb_opcode);
+        cycles += execute_cb_opcode(cb_opcode);
         break;
     }
     case 0xCC: CALL_cc_imm16(registers.get_zero_flag()); break;
@@ -385,9 +382,11 @@ void CPU::execute_opcode(uint8_t opcode)
         std::cout << "Illegal opcode: " << std::hex << (int)opcode << std::endl;
         exit(1);
     }
+
+    return cycles;
 }
 
-void CPU::execute_cb_opcode(uint8_t cb_opcode)
+uint8_t CPU::execute_cb_opcode(uint8_t cb_opcode)
 {
     switch (cb_opcode)
     {
@@ -514,6 +513,8 @@ void CPU::execute_cb_opcode(uint8_t cb_opcode)
             exit(1);
         }
     }
+
+    return timings_cb[cb_opcode];
     }
 }
 

@@ -2,7 +2,7 @@
 #include <cstdint>
 #include "register.h"
 #include "interrupt.h"
-#include "bus.h"
+#include "mmu.h"
 
 extern uint8_t timings_u[256];
 extern uint8_t timings_cb[256];
@@ -10,14 +10,13 @@ extern uint8_t timings_cb[256];
 class CPU
 {
 public:
-    CPU(MemoryBus&, InterruptManager&);
-    //~CPU();
+    CPU(MMU&, InterruptManager&);
 
     void init_post_boot();
 
-    void next_instruction();
-    void execute_opcode(uint8_t);
-    void execute_cb_opcode(uint8_t);
+    uint8_t next_instruction();
+    uint8_t execute_opcode(uint8_t);
+    uint8_t execute_cb_opcode(uint8_t);
 
     void debug_print();
     void inline_debug_print();
@@ -134,9 +133,8 @@ public:
     void CP_A_r16mem(uint16_t&);
 private:
     Registers registers;
-    bool ime, is_halted, is_stopped;
-    uint8_t cycles;
+    bool ime_req, ime, is_halted, is_stopped;
     uint8_t opcode;
-    MemoryBus& mmu;
+    MMU& mmu;
     InterruptManager& imu;
 };

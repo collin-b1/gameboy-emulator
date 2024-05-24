@@ -3,14 +3,15 @@
 
 enum PPU_Mode : uint8_t
 {
-    HBLANK = 0,
-    VBLANK = 1,
-    OAM = 2,
-    VRAM = 3
+    MODE_HBLANK = 0,
+    MODE_VBLANK = 1,
+    MODE_OAM = 2,
+    MODE_VRAM = 3
 };
 
 PPU::PPU(InterruptManager& imu) : 
     imu(imu),
+    mode(MODE_HBLANK),
     vram{},
     oam{},
     lcdc(0),
