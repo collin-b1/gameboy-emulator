@@ -5,7 +5,14 @@ project(Gobby)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-find_package(SDL2 REQUIRED)
+# Include vcpkg
+if(DEFINED ENV{VCPKG_ROOT})
+    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+else()
+    message(FATAL_ERROR "Please define VCPKG_ROOT environment variable.")
+endif()
+
+find_package(SDL2 CONFIG REQUIRED)
 
 # Include directories
 include_directories(include)
@@ -20,7 +27,10 @@ add_definitions(-DROMS_DIRECTORY="${ROMS_DIRECTORY}")
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 # Define the executable
-add_executable(Gobby ${SOURCES})
+add_executable(${PROJECT_NAME} ${SOURCES})
 
-# Link SDL2
-target_link_libraries(Gobby SDL2::SDL2 SDL2::SDL2main)
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+    $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
+    $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
+)

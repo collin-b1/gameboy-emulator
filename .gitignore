@@ -4,3 +4,4 @@
 *.gb
 *.bin
 out/
+build/
