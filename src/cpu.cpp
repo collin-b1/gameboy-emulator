@@ -48,10 +48,10 @@ CPU::CPU(MMU& mmu, InterruptManager& imu) :
     opcode(0), 
     mmu(mmu), 
     imu(imu),
-    ime_req(false),
+    ime_scheduled(false),
     is_halted(false), 
-    is_stopped(false), 
-    ime(false)
+    is_stopped(false),
+    halt_bug(false)
 {}
 
 // Set registers to post-bootrom values
@@ -67,29 +67,86 @@ void CPU::init_post_boot()
 
 uint8_t CPU::next_instruction()
 {
+    // Handle interrupts
+    auto iflag = imu.get_interrupt_flag();
+    auto ie = imu.get_interrupt_enable();
+    auto ime = imu.get_ime();
+
+    // ie & iflag != 0 should unhalt regardless of ime
+    if ((ie & iflag) != 0)
+    {
+        is_halted = false;
+    }
+
+    if (ime)
+    {
+
+        if (iflag & ie & InterruptSource::INTERRUPT_VBLANK)
+        {
+            service_interrupt(InterruptSource::INTERRUPT_VBLANK);
+        }
+        if (iflag & ie & InterruptSource::INTERRUPT_LCD_STAT)
+        {
+            service_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
+        }
+        if (iflag & ie & InterruptSource::INTERRUPT_TIMER)
+        {
+            service_interrupt(InterruptSource::INTERRUPT_TIMER);
+        }
+        if (iflag & ie & InterruptSource::INTERRUPT_SERIAL)
+        {
+            service_interrupt(InterruptSource::INTERRUPT_SERIAL);
+        }
+        if (iflag & ie & InterruptSource::INTERRUPT_JOYPAD)
+        {
+            service_interrupt(InterruptSource::INTERRUPT_JOYPAD);
+        }
+    }
+
     if (is_halted)
     {
-        if (imu.interrupt_requested())
-        {
-            is_halted = 0;
-        }
-        else
-        {
-            return 0;
-        }
+        return 1;
     }
 
-    if (ime_req)
+    if (halt_bug)
     {
-        ime_req = 0;
-        ime = 1;
+        ++registers.pc;
+        halt_bug = false;
     }
 
-    inline_debug_print();
+    auto opcode = mmu.bus_read(registers.pc++);
 
-    uint8_t opcode = mmu.bus_read(registers.pc++);
+    //inline_debug_print();
 
-    return execute_opcode(opcode);
+    auto cycles = execute_opcode(opcode);
+
+    // Handle 1-cycle delay from EI instruction
+    // IME doesn't get set until END of cycle AFTER EI
+    if (ime_scheduled)
+    {
+        imu.set_ime(true);
+        ime_scheduled = false;
+    }
+
+    return cycles;
+}
+
+void CPU::service_interrupt(InterruptSource source)
+{
+    // Clear interrupt source flag
+    imu.clear_interrupt_flag(source);
+
+    // Set IME to 0
+    imu.set_ime(false);
+
+    // Halt mode is exited
+    is_halted = false;
+
+    // Push PC to stack
+    PUSH_r16stk(++registers.pc);
+
+    // Set PC to interrupt vector
+    registers.pc = 0x00FF & source;
 }
 
 void CPU::debug_print()
@@ -97,7 +154,7 @@ void CPU::debug_print()
     registers.print_registers();
 }
 
-void CPU::inline_debug_print()
+void CPU::inline_debug_print() const
 {
     printf("A:%02X F:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X SP:%04X PC:%04X PCMEM:%02X,%02X,%02X,%02X\n",
         registers.af.msb, 
@@ -530,7 +587,6 @@ uint8_t CPU::execute_cb_opcode(uint8_t cb_opcode)
     return timings_cb[cb_opcode];
 }
 
-
 void CPU::NOP()
 {}
 
@@ -575,7 +631,7 @@ void CPU::RETI()
     RET();
 
     // RETI doesn't have the 1 cycle delay that EI has
-    ime = 1;
+    imu.set_ime(true);
 }
 
 void CPU::JP_cc_imm16(bool condition_met)
@@ -597,7 +653,17 @@ void CPU::RST_tgt3(uint8_t tgt3)
 
 void CPU::HALT()
 {
-    is_halted = true;
+    if (imu.get_interrupt_enable() & imu.get_interrupt_flag()) // ie & if & 0x1F != 0
+    {
+        if (!imu.get_ime())
+        {
+            halt_bug = 1;
+        }
+    }
+    else // ie & if & 0x1F == 0
+    {
+        is_halted = 1;
+    }
 }
 
 void CPU::ADD_A_r8(uint8_t& r8)
@@ -686,20 +752,21 @@ void CPU::AND_A_r8(uint8_t& r8)
 void CPU::STOP()
 {
     // debug only
-    exit(1);
+    //exit(1);
 }
 
 
 void CPU::DI()
 {
     // DI doesn't have the 1 cycle delay that EI has
-    ime = 0;
+    ime_scheduled = false;
+    imu.set_ime(false);
 }
 
 void CPU::EI()
 {
     // EI enables IME the following cycle, not immediately.
-    ime_req = 1;
+    ime_scheduled = true;
 }
 
 // LD [r16], imm8

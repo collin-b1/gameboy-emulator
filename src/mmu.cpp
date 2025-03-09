@@ -2,16 +2,16 @@
 #include <cstdint>
 #include <iostream>
 
-MMU::MMU(Cart& cart, PPU& ppu, InterruptManager& imu) :
-    cart(cart),
-    ppu(ppu),
-    imu(imu),
-    wram(WRAM_END - WRAM_START + 1),
-    hram(HRAM_END - HRAM_START + 1),
-    timer(),
-    serial(),
-    joypad(),
-    svbk(0)
+MMU::MMU(Cart& cart, PPU& ppu, InterruptManager& imu, Timer& timer)
+    : cart(cart)
+    , ppu(ppu)
+    , imu(imu)
+    , wram()
+    , hram()
+    , timer(timer)
+    , serial()
+    , joypad()
+    , svbk(0)
 {}
 
 uint8_t MMU::bus_read(uint16_t addr) const
@@ -237,7 +237,7 @@ void MMU::bus_write(uint16_t addr, uint8_t data)
     // Bootrom toggle (non-zero is disabled)
     else if (addr == 0xFF50)
     {
-        std::cout << "Boot ROM disabled!" << std::endl;
+        // std::cout << "Boot ROM disabled!" << std::endl;
         cart.write(addr, data);
     }
 
@@ -262,6 +262,7 @@ void MMU::bus_write(uint16_t addr, uint8_t data)
     // Interrupt Flag (IF)
     else if (addr == 0xFF0F)
     {
+        //std::cout << "[IMU] Write 0x" << std::hex << addr << ": 0x" << static_cast<int>(data) << std::endl;
         imu.write(addr, data);
     }
 
@@ -274,6 +275,7 @@ void MMU::bus_write(uint16_t addr, uint8_t data)
     // Interrupt Enable (IE)
     else if (addr == 0xFFFF)
     {
+        //std::cout << "[IMU] Write 0x" << std::hex << addr << ": 0x" << static_cast<int>(data) << std::endl;
         imu.write(addr, data);
     }
 }

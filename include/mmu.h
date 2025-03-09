@@ -1,5 +1,5 @@
 #pragma once
-#include <vector>
+#include <array>
 #include <memory>
 
 #include "cart.h"
@@ -18,21 +18,21 @@ constexpr uint16_t HRAM_END = 0xFFFE;
 class MMU
 {
 public:
-    MMU(Cart&, PPU&, InterruptManager&);
+    MMU(Cart&, PPU&, InterruptManager&, Timer&);
     uint8_t bus_read(uint16_t) const;
     uint16_t bus_read_word(uint16_t) const;
     void bus_write(uint16_t addr, uint8_t data);
     void bus_write_word(uint16_t addr, uint16_t data);
     bool load_rom(std::string path);
 private:
-    std::vector<uint8_t> wram;
-    std::vector<uint8_t> hram;
+    std::array<uint8_t, WRAM_END - WRAM_START + 1> wram;
+    std::array<uint8_t, HRAM_END - HRAM_START + 1> hram;
     uint8_t svbk;
 
     Cart& cart;
     PPU& ppu;
     InterruptManager& imu;
-    Timer timer;
+    Timer& timer;
     Serial serial;
     Joypad joypad;
 };

@@ -8,7 +8,8 @@ uint8_t Joypad::read(uint16_t addr) const
 {
     if (addr == 0xFF00)
     {
-        return joyp;
+        return 0xFF;
+        //return joyp;
     }
     else
     {

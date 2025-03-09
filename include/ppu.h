@@ -23,6 +23,7 @@ public:
     uint8_t read(uint16_t) const override;
     void write(uint16_t, uint8_t) override;
     void tick();
+    void scanline();
 
 private:
     InterruptManager& imu;
@@ -35,8 +36,27 @@ private:
     // 0xFE00 - 0xFE9F: OAM
     std::vector<uint8_t> oam;
 
+    uint8_t screen[160 * 144];
+
     // 0xFF40: LCDC - LCD Control
-    uint8_t lcdc;
+    union
+    {
+        uint8_t lcdc;
+        struct
+        {
+            bool lcd_ppu_enable;
+            bool tile_map_area; // 0: 9800-9BFF, 1: 9C00-9FFF
+            bool window_enable;
+            bool bg_window_tile_data_area; // 0: 8800-97FF, 1: 8000-8FFF
+            bool bg_tile_map_area; // 0: 9800-9BFF, 1: 9C00-9FFF
+            bool obj_size; // 0: 8x8, 1: 8x16
+            bool obj_enable;
+            // Non-CGB: BG and window display
+            // CGB: BG and Window master priority
+            bool bg_window_enable_priority;
+        };
+    } lcdc;
+
 
     // 0xFF41: STAT - LCD Mode
     uint8_t mode;

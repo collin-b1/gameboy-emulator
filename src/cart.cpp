@@ -2,11 +2,11 @@
 #include <fstream>
 #include <iostream>
 
-Cart::Cart() : 
-    headers(), 
-    bank(0),
-    boot_rom(0x100),
-    rom(ROM_END - ROM_START + 1)
+Cart::Cart()
+    : headers() 
+    , bank(0)
+    , boot_rom()
+    , rom()
 {}
 
 uint8_t Cart::read(uint16_t addr) const
@@ -37,46 +37,19 @@ void Cart::write(uint16_t addr, uint8_t data)
     }
     else
     {
-        exit(7);
+        /*std::cout << std::hex << "Invalid write to addr 0x" << addr << " with data 0x" << data << std::endl;
+        exit(7);*/
     }
 }
 
 bool Cart::load_boot_rom(std::string& path)
 {
-    std::ifstream rom_file;
-    rom_file.open(path, std::ios::binary);
-
-    if (!rom_file.is_open())
-    {
-        std::cerr << "Error opening Boot ROM file" << std::endl;
-        return false;
-    }
-
-    rom_file.seekg(0, std::ios::end);
-    rom_file.seekg(0, std::ios::beg);
-    rom_file.read(reinterpret_cast<char*>(boot_rom.data()), boot_rom.size());
-    rom_file.close();
-
-    return true;
+    return load_buffer(path, boot_rom);
 }
 
-bool Cart::load_rom(std::string &path)
+bool Cart::load_rom(std::string& path)
 {
-    std::ifstream rom_file;
-    rom_file.open(path, std::ios::binary);
-
-    if (!rom_file.is_open())
-    {
-        std::cerr << "Error opening ROM file" << std::endl;
-        return false;
-    }
-
-    rom_file.seekg(0, std::ios::end);
-    rom_file.seekg(0, std::ios::beg);
-    rom_file.read(reinterpret_cast<char*>(rom.data()), rom.size());
-    rom_file.close();
-
-    return load_header();
+    return load_buffer(path, rom);
 }
 
 bool Cart::load_header()

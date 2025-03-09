@@ -2,17 +2,25 @@
 #include <SDL.h>
 
 Renderer::Renderer()
+    : window(nullptr, &SDL_DestroyWindow)
+    , renderer(nullptr, &SDL_DestroyRenderer)
 {
+    // Initialize SDL
     SDL_Init(SDL_INIT_VIDEO);
-    window = SDL_CreateWindow("Gameboy Emulator",
+
+    // Create window and renderer
+    window.reset(SDL_CreateWindow("Gameboy Emulator",
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-        160, 144, 0);
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+        160, 144, 0));
+    renderer.reset(SDL_CreateRenderer(window.get(), -1, SDL_RENDERER_ACCELERATED));
 }
 
 Renderer::~Renderer()
 {
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
     SDL_Quit();
+}
+
+void Renderer::push_pixel()
+{
+
 }

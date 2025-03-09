@@ -1,8 +1,10 @@
 #pragma once
 #include <string>
-#include <vector>
+#include <array>
 #include <cstdint>
 #include "memory.h"
+
+constexpr uint16_t BOOT_ROM_SIZE = 0x100;
 
 constexpr uint16_t ROM_START = 0x0000;
 constexpr uint16_t ROM_END = 0x7FFF;
@@ -79,10 +81,30 @@ public:
     void write(uint16_t, uint8_t) override;
     void print_headers() const;
 
+    // Load buffer from file to an std::array
+    template <typename T, size_t N>
+    bool load_buffer(std::string& path, std::array<T, N>& buffer)
+    {
+        std::ifstream rom_file;
+        rom_file.open(path, std::ios::binary);
+
+        if (!rom_file.is_open())
+        {
+            return false;
+        }
+
+        rom_file.seekg(0, std::ios::end);
+        rom_file.seekg(0, std::ios::beg);
+        rom_file.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
+        rom_file.close();
+
+        return load_header();
+    }
+
 private:
     std::string name;
     CartHeaders headers;
-    std::vector<uint8_t> rom;
-    std::vector<uint8_t> boot_rom;
+    std::array<uint8_t, ROM_END - ROM_START + 1> rom;
+    std::array<uint8_t, BOOT_ROM_SIZE> boot_rom;
     uint8_t bank;
 };

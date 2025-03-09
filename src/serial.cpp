@@ -23,7 +23,14 @@ void Serial::write(uint16_t addr, uint8_t data)
     switch (addr)
     {
     case 0xFF01: sb = data; break;
-    case 0xFF02: sc = data; break;
+    case 0xFF02: 
+        sc = data;
+        if (sc & 0x80)
+        {
+            std::cout << sb;
+            sc &= ~0x80;
+        }
+        break;
     default:
         std::cout << "Invalid serial write at address: 0x" << std::hex << addr << std::endl;
         exit(7);

@@ -17,9 +17,10 @@ public:
     uint8_t next_instruction();
     uint8_t execute_opcode(uint8_t);
     uint8_t execute_cb_opcode(uint8_t);
+    void service_interrupt(InterruptSource);
 
     void debug_print();
-    void inline_debug_print();
+    void inline_debug_print() const;
 
     // Block 0
     void NOP();
@@ -133,7 +134,8 @@ public:
     void CP_A_r16mem(uint16_t&);
 private:
     Registers registers;
-    bool ime_req, ime, is_halted, is_stopped;
+    bool is_halted, is_stopped, halt_bug;
+    bool ime_scheduled;
     uint8_t opcode;
     MMU& mmu;
     InterruptManager& imu;

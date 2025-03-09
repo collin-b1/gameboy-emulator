@@ -14,6 +14,8 @@ class Gobby
 {
 public:
     Gobby();
+    Gobby(std::string);
+    Gobby(std::string, std::string);
     void tick_systems();
     bool load_game(std::string rom, std::string boot_rom);
 private:
@@ -21,5 +23,6 @@ private:
     CPU cpu;
     MMU mmu;
     PPU ppu;
+    Timer timer;
     InterruptManager interrupts;
 };
