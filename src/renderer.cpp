@@ -1,6 +1,13 @@
 #include "renderer.h"
 #include <SDL.h>
 
+//constexpr std::array<uint32_t, 4> pixel_colors{
+//    0xffffffff,    // 0b00
+//    0xffffffff,      // 0b01
+//    0xffffffff,     // 0b10
+//    0x000000ff,     // 0b11
+//};
+
 Renderer::Renderer()
     : window(nullptr, &SDL_DestroyWindow)
     , renderer(nullptr, &SDL_DestroyRenderer)

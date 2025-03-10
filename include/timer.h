@@ -1,24 +1,29 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include "memory.h"
 #include "interrupt.h"
+#include "system.h"
 
-class Timer : public IMemory
+class Timer : public IMemory, public ITickableSystem
 {
 public:
     Timer(InterruptManager&);
     uint8_t read(uint16_t) const override;
     void write(uint16_t, uint8_t) override;
-    void tick();
+    void tick(uint16_t) override;
+    std::string get_state() const;
 private:
+    uint64_t _cycles;
+
     InterruptManager& imu;
 
     // Divider Register
     // - Incremented at 16384Hz (~16779Hz on SGB).
     // - Writing any value resets to 0x00.
     // - STOP instruction also resets, and doesn't start again until stop mode ends.
-    uint8_t div;
+    uint16_t div;
 
     // Timer Counter
     // - Incremented at speed specified by TAC.

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector>
+#include <array>
 #include <cstdint>
 
 #include "interrupt.h"
@@ -13,6 +13,9 @@ constexpr uint16_t VRAM_END = 0x9FFF;
 constexpr uint16_t OAM_START = 0xFE00;
 constexpr uint16_t OAM_END = 0xFE9F;
 
+constexpr uint8_t SCREEN_WIDTH = 160;
+constexpr uint8_t SCREEN_HEIGHT = 144;
+
 enum PPU_Mode;
 
 class PPU : public IMemory
@@ -22,6 +25,7 @@ public:
 
     uint8_t read(uint16_t) const override;
     void write(uint16_t, uint8_t) override;
+    const uint8_t* get_tile_data(uint8_t) const;
     void tick();
     void scanline();
 
@@ -31,12 +35,12 @@ private:
     Renderer renderer;
 
     // 0x8000 - 0x9FFF: VRAM
-    std::vector<uint8_t> vram;
+    std::array<uint8_t, VRAM_END - VRAM_START + 1> vram;
 
     // 0xFE00 - 0xFE9F: OAM
-    std::vector<uint8_t> oam;
+    std::array<uint8_t, OAM_END - OAM_START + 1> oam;
 
-    uint8_t screen[160 * 144];
+    //std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT> screen;
 
     // 0xFF40: LCDC - LCD Control
     union
@@ -44,22 +48,36 @@ private:
         uint8_t lcdc;
         struct
         {
-            bool lcd_ppu_enable;
-            bool tile_map_area; // 0: 9800-9BFF, 1: 9C00-9FFF
-            bool window_enable;
-            bool bg_window_tile_data_area; // 0: 8800-97FF, 1: 8000-8FFF
-            bool bg_tile_map_area; // 0: 9800-9BFF, 1: 9C00-9FFF
-            bool obj_size; // 0: 8x8, 1: 8x16
-            bool obj_enable;
             // Non-CGB: BG and window display
             // CGB: BG and Window master priority
-            bool bg_window_enable_priority;
+            uint8_t bg_window_enable_priority : 1;
+            uint8_t obj_enable : 1;
+            uint8_t obj_size : 1; // 0: 8x8, 1: 8x16
+            uint8_t bg_tile_map_area : 1; // 0: 9800-9BFF, 1: 9C00-9FFF
+            uint8_t bg_window_tile_data_area : 1; // 0: 8800-97FF, 1: 8000-8FFF
+            uint8_t window_enable : 1;
+            uint8_t tile_map_area : 1; // 0: 9800-9BFF, 1: 9C00-9FFF
+            uint8_t lcd_ppu_enable : 1;
         };
     } lcdc;
 
 
     // 0xFF41: STAT - LCD Mode
-    uint8_t mode;
+    union
+    {
+        uint8_t stat;
+        struct
+        {
+            uint8_t _unused : 1;
+            uint8_t lyc_int_select : 1;
+            uint8_t mode_2_int_select : 1;
+            uint8_t mode_1_int_select : 1;
+            uint8_t mode_0_int_select : 1;
+            uint8_t lyc_ly_comparison : 1;
+            uint8_t ppu_mode : 2;
+        };
+    } stat;
+    
 
     // 0xFF42 – 0xFF43: SCY, SCX: Background viewport Y position, X position
     uint8_t scy, scx;

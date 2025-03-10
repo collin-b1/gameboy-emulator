@@ -19,6 +19,8 @@ public:
     void tick_systems();
     bool load_game(std::string rom, std::string boot_rom);
 private:
+    uint64_t clock;
+
     Cart cart;
     CPU cpu;
     MMU mmu;

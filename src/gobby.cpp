@@ -8,35 +8,41 @@
 #include <chrono>
 #include <thread>
 
-Gobby::Gobby() : 
-    cart{},
-    interrupts{},
-    timer{ interrupts },
-    ppu{ interrupts },
-    mmu{ cart, ppu, interrupts, timer },
-    cpu{ mmu, interrupts }
+constexpr uint32_t cycles_per_frame = 70224;
+constexpr uint32_t cycles_per_tick = cycles_per_frame / 60;
+
+Gobby::Gobby()
+    : clock(0)
+    , cart{}
+    , interrupts{}
+    , timer{ interrupts }
+    , ppu{ interrupts }
+    , mmu{ cart, ppu, interrupts, timer }
+    , cpu{ mmu, interrupts }
 {}
 
-Gobby::Gobby(std::string rom) :
-    cart{},
-    interrupts{},
-    timer{ interrupts },
-    ppu{ interrupts },
-    mmu{ cart, ppu, interrupts, timer },
-    cpu{ mmu, interrupts }
+Gobby::Gobby(std::string rom)
+    : clock(0)
+    , cart{}
+    , interrupts{}
+    , timer{ interrupts }
+    , ppu{ interrupts }
+    , mmu{ cart, ppu, interrupts, timer }
+    , cpu{ mmu, interrupts }
 {
     load_game(rom, "");
     cpu.init_post_boot();
     mmu.bus_write(0xFF50, 0x01);
 }
 
-Gobby::Gobby(std::string rom, std::string boot_rom) :
-    cart{},
-    interrupts{},
-    timer{ interrupts },
-    ppu{ interrupts },
-    mmu{ cart, ppu, interrupts, timer },
-    cpu{ mmu, interrupts }
+Gobby::Gobby(std::string rom, std::string boot_rom)
+    : clock(0)
+    , cart{}
+    , interrupts{}
+    , timer{ interrupts }
+    , ppu{ interrupts }
+    , mmu{ cart, ppu, interrupts, timer }
+    , cpu{ mmu, interrupts }
 {
     load_game(rom, boot_rom);
 }
@@ -61,35 +67,23 @@ bool Gobby::load_game(std::string rom_name, std::string boot_rom)
 
 void Gobby::tick_systems()
 {
-    // CPU tick
-    auto cpu_cycles = cpu.next_instruction();
-
-    // PPU tick
-    for (auto i{ 0 }; i < cpu_cycles * 4; ++i)
+    uint32_t cycles{ 0 };
+    while (cycles < cycles_per_tick)
     {
-        ppu.tick();
-    }
+        uint8_t cpu_cycles = cpu.next_instruction();
+        cycles += cpu_cycles;
 
-    // Timer tick
-    for (auto i{ 0 }; i < cpu_cycles * 4; ++i)
-    {
-        timer.tick();
-    }
+        for (uint8_t i{ 0 }; i < cpu_cycles * 4; ++i)
+        {
+            ppu.tick();
+        }
 
-    // Serial tick
-    // TODO: Implement serial
-    /*
-    for (auto i{ 0 }; i < cpu_cycles; ++i)
-    {
-        serial.tick();
+        timer.tick(cpu_cycles);
+        //std::cout << cycles << " " << cpu.get_state() << std::endl;
     }
-    */
-
-    // Joypad tick
-    // TODO: Implement joypad
 }
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
     std::string rom_name{"02-interrupts.gb"};
 
@@ -98,17 +92,18 @@ int main(int argc, char* argv[])
         rom_name = argv[1];
     }
 
-    Gobby gobby(rom_name);
+    auto gobby = std::make_unique<Gobby>(rom_name);
 
     bool cpu_running = true;
     auto frame_duration = std::chrono::duration<double, std::milli>(16.74); // Each frame is ~16.74ms
+
     while (cpu_running)
     {
         auto frame_start = std::chrono::high_resolution_clock::now();
         
         for (int i{ 0 }; i < 70224; ++i) // 70224 dots per frame
         {
-            gobby.tick_systems();
+            gobby->tick_systems();
         }
 
         auto frame_end = std::chrono::high_resolution_clock::now();

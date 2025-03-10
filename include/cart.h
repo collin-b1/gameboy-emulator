@@ -48,6 +48,8 @@ struct CartHeaders
 {
     uint8_t entrypoint[4];              // 0x100-0x103
     uint8_t nintendo_logo[48];          // 0x104-0x133
+
+    // TODO: Look into if compiler padding affects this
     union                               // 0x134-0x143
     {
         uint8_t title_cgb[16];

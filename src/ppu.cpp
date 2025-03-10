@@ -1,7 +1,7 @@
 #include "ppu.h"
 #include <iostream>
 
-enum PPU_Mode : uint8_t
+enum PPUMode : uint8_t
 {
     MODE_HBLANK = 0,
     MODE_VBLANK = 1,
@@ -12,10 +12,10 @@ enum PPU_Mode : uint8_t
 PPU::PPU(InterruptManager& imu)
     : imu(imu)
     , renderer{}
-    , mode(MODE_HBLANK)
-    , vram(VRAM_END - VRAM_START + 1)
-    , oam(OAM_END - OAM_START + 1)
-    , lcdc{ 0 }
+    , stat(0)
+    , vram()
+    , oam()
+    , lcdc(0)
     , scy(0), scx(0)
     , ly(0), lyc(0)
     , bgp(0)
@@ -33,12 +33,7 @@ uint8_t PPU::read(uint16_t addr) const
     switch (addr)
     {
     case 0xFF40: return lcdc.lcdc;
-    case 0xFF41:
-    {
-        return 0x00
-            | mode
-            | (ly == lyc) << 2;
-    }
+    case 0xFF41: return stat.stat & (~0x3 | ((ly == lyc) << 2)); // TODO: Finish STAT read/write
     case 0xFF42: return scy;
     case 0xFF43: return scx;
     case 0xFF44: return ly;
@@ -62,7 +57,7 @@ uint8_t PPU::read(uint16_t addr) const
     default:
         if (addr >= VRAM_START && addr <= VRAM_END)
         {
-            if (mode != MODE_VRAM)
+            if (stat.ppu_mode != MODE_VRAM)
             {
                 return vram[addr - VRAM_START];
             }
@@ -73,7 +68,7 @@ uint8_t PPU::read(uint16_t addr) const
         }
         else if (addr >= OAM_START && addr <= OAM_END)
         {
-            if (mode != MODE_OAM_SEARCH && mode != MODE_VRAM)
+            if (stat.ppu_mode != MODE_OAM_SEARCH && stat.ppu_mode != MODE_VRAM)
             {
                 return oam[addr - OAM_START];
             }
@@ -94,7 +89,7 @@ void PPU::write(uint16_t addr, uint8_t data)
     switch (addr)
     {
     case 0xFF40: lcdc.lcdc = data; break;
-    case 0xFF41: /*stat = data;*/ break;
+    case 0xFF41: /*stat = data;*/ break;  // TODO: Finish STAT read/write
     case 0xFF42: scy = data; break;
     case 0xFF43: scx = data; break;
     case 0xFF44: ly = data; break;
@@ -129,9 +124,36 @@ void PPU::write(uint16_t addr, uint8_t data)
     }
 }
 
+const uint8_t* PPU::get_tile_data(uint8_t idx) const
+{
+    // LCDC.4 == 1, 0x8000-0x8FFF
+    if (lcdc.bg_window_tile_data_area)
+    {
+        // 0x8000 is base pointer, Block 0 is 0-127, Block 1 is 128-255
+        return vram.data() + (idx * 16);
+    }
+
+    // LCDC.4 == 0
+    else
+    {
+        // Block 2 (0x9000-0x97FF)
+        if (idx < 128)
+        {
+            return vram.data() + 0x1000 + (idx * 16);
+        }
+        // Block 1 (0x8800-0x8FFF)
+        else
+        {
+            return vram.data() + 0x800 + ((idx - 128) * 16);
+        }
+    }
+}
+
 void PPU::tick()
 {
-    switch (mode)
+    if (!lcdc.lcd_ppu_enable) return;
+
+    switch (stat.ppu_mode)
     {
     case MODE_OAM_SEARCH:
 

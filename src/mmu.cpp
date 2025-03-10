@@ -143,6 +143,10 @@ uint8_t MMU::bus_read(uint16_t addr) const
     {
         return imu.read(addr);
     }
+    else
+    {
+        std::cerr << "\nMMU read address not implemented! At: 0x"<< std::hex << addr << std::endl;
+    }
 
     return 0;
 }
@@ -277,6 +281,10 @@ void MMU::bus_write(uint16_t addr, uint8_t data)
     {
         //std::cout << "[IMU] Write 0x" << std::hex << addr << ": 0x" << static_cast<int>(data) << std::endl;
         imu.write(addr, data);
+    }
+    else
+    {
+        std::cerr << "\nMMU write address not implemented! At: 0x" << std::hex << addr << std::endl;
     }
 }
 

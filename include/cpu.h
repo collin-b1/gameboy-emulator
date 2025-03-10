@@ -1,11 +1,10 @@
 #pragma once
 #include <cstdint>
+#include <string>
 #include "register.h"
 #include "interrupt.h"
+#include "system.h"
 #include "mmu.h"
-
-extern uint8_t timings_u[256];
-extern uint8_t timings_cb[256];
 
 class CPU
 {
@@ -17,10 +16,12 @@ public:
     uint8_t next_instruction();
     uint8_t execute_opcode(uint8_t);
     uint8_t execute_cb_opcode(uint8_t);
+
+    void handle_interrupts();
     void service_interrupt(InterruptSource);
 
     void debug_print();
-    void inline_debug_print() const;
+    std::string get_state() const;
 
     // Block 0
     void NOP();
@@ -134,8 +135,8 @@ public:
     void CP_A_r16mem(uint16_t&);
 private:
     Registers registers;
-    bool is_halted, is_stopped, halt_bug;
-    bool ime_scheduled;
+    bool is_halted, is_stopped;
+    bool ime_scheduler;
     uint8_t opcode;
     MMU& mmu;
     InterruptManager& imu;

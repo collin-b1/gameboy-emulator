@@ -39,7 +39,12 @@ private:
         uint8_t iflag;
         struct
         {
-            bool _b7, _b6, _b5, vblank_req, lcd_req, timer_req, serial_req, joypad_req;
+            uint8_t vblank_req : 1;
+            uint8_t lcd_req : 1;
+            uint8_t timer_req : 1;
+            uint8_t serial_req : 1;
+            uint8_t joypad_req : 1;
+            uint8_t _unused : 3;
         };
     } iflag;
 
@@ -49,7 +54,12 @@ private:
         uint8_t ie;
         struct
         {
-            bool _b7, _b6, _b5, vblank, lcd, timer, serial, joypad;
+            uint8_t vblank : 1;
+            uint8_t lcd : 1;
+            uint8_t timer : 1;
+            uint8_t serial : 1;
+            uint8_t joypad : 1;
+            uint8_t _unused : 3;
         };
     } ie;
 };

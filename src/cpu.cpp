@@ -1,8 +1,10 @@
 #include "cpu.h"
 #include <iostream>
+#include <array>
+#include <format>
 
 // Unprefixed
-uint8_t timings_u[256] = {
+constexpr std::array<uint8_t, 256> timings_u{
 //  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
     1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1, // 0x00
     1, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1, // 0x10
@@ -23,7 +25,7 @@ uint8_t timings_u[256] = {
 };
 
 // 0xCB Prefixed
-uint8_t timings_cb[256] = {
+constexpr std::array<uint8_t, 256> timings_cb{
 //  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0x00
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0x10
@@ -43,15 +45,14 @@ uint8_t timings_cb[256] = {
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0xF0
 };
 
-CPU::CPU(MMU& mmu, InterruptManager& imu) :
-    registers(), 
-    opcode(0), 
-    mmu(mmu), 
-    imu(imu),
-    ime_scheduled(false),
-    is_halted(false), 
-    is_stopped(false),
-    halt_bug(false)
+CPU::CPU(MMU& mmu, InterruptManager& imu)
+    : registers()
+    , opcode(0)
+    , mmu(mmu)
+    , imu(imu)
+    , ime_scheduler(false)
+    , is_halted(false) 
+    , is_stopped(false)
 {}
 
 // Set registers to post-bootrom values
@@ -67,83 +68,88 @@ void CPU::init_post_boot()
 
 uint8_t CPU::next_instruction()
 {
-    // Handle interrupts
     auto iflag = imu.get_interrupt_flag();
     auto ie = imu.get_interrupt_enable();
     auto ime = imu.get_ime();
 
     // ie & iflag != 0 should unhalt regardless of ime
-    if ((ie & iflag) != 0)
-    {
-        is_halted = false;
-    }
-
-    if (ime)
-    {
-
-        if (iflag & ie & InterruptSource::INTERRUPT_VBLANK)
-        {
-            service_interrupt(InterruptSource::INTERRUPT_VBLANK);
-        }
-        if (iflag & ie & InterruptSource::INTERRUPT_LCD_STAT)
-        {
-            service_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
-        }
-        if (iflag & ie & InterruptSource::INTERRUPT_TIMER)
-        {
-            service_interrupt(InterruptSource::INTERRUPT_TIMER);
-        }
-        if (iflag & ie & InterruptSource::INTERRUPT_SERIAL)
-        {
-            service_interrupt(InterruptSource::INTERRUPT_SERIAL);
-        }
-        if (iflag & ie & InterruptSource::INTERRUPT_JOYPAD)
-        {
-            service_interrupt(InterruptSource::INTERRUPT_JOYPAD);
-        }
-    }
-
     if (is_halted)
     {
-        return 1;
+        if (ime || (ie & iflag))
+        {
+            is_halted = false;
+        }
+        else
+        {
+            return 1;
+        }
     }
 
-    if (halt_bug)
+    if (ime && (iflag & ie))
     {
-        ++registers.pc;
-        halt_bug = false;
+        handle_interrupts();
+
+        // 6 M-cycles used for handling interrupts
+        return 6;
     }
-
-    auto opcode = mmu.bus_read(registers.pc++);
-
-    //inline_debug_print();
-
-    auto cycles = execute_opcode(opcode);
 
     // Handle 1-cycle delay from EI instruction
     // IME doesn't get set until END of cycle AFTER EI
-    if (ime_scheduled)
+    if (ime_scheduler)
     {
         imu.set_ime(true);
-        ime_scheduled = false;
+        ime_scheduler = false;
     }
+    
+    // Fetch, decode, and execute opcode
+    auto opcode = mmu.bus_read(registers.pc++);
+    auto cycles = execute_opcode(opcode);
+
+    //debug_print();
 
     return cycles;
 }
 
+void CPU::handle_interrupts()
+{
+    auto iflag = imu.get_interrupt_flag();
+    auto ie = imu.get_interrupt_enable();
+    auto ime = imu.get_ime();
+
+    if (!ime) return;
+    
+    if (iflag & ie & 0x1)
+    {
+        service_interrupt(InterruptSource::INTERRUPT_VBLANK);
+    }
+    else if (iflag & ie & 0x2)
+    {
+        service_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
+    }
+    else if (iflag & ie & 0x4)
+    {
+        service_interrupt(InterruptSource::INTERRUPT_TIMER);
+    }
+    else if (iflag & ie & 0x8)
+    {
+        service_interrupt(InterruptSource::INTERRUPT_SERIAL);
+    }
+    else if (iflag & ie & 0x10)
+    {
+        service_interrupt(InterruptSource::INTERRUPT_JOYPAD);
+    }
+}
+
 void CPU::service_interrupt(InterruptSource source)
 {
+    // Push PC to stack
+    PUSH_r16stk(registers.pc);
+
     // Clear interrupt source flag
     imu.clear_interrupt_flag(source);
 
     // Set IME to 0
     imu.set_ime(false);
-
-    // Halt mode is exited
-    is_halted = false;
-
-    // Push PC to stack
-    PUSH_r16stk(++registers.pc);
 
     // Set PC to interrupt vector
     registers.pc = 0x00FF & source;
@@ -151,20 +157,16 @@ void CPU::service_interrupt(InterruptSource source)
 
 void CPU::debug_print()
 {
-    registers.print_registers();
+    std::cout << get_state() << std::endl;
 }
 
-void CPU::inline_debug_print() const
+std::string CPU::get_state() const
 {
-    printf("A:%02X F:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X SP:%04X PC:%04X PCMEM:%02X,%02X,%02X,%02X\n",
-        registers.af.msb, 
-        registers.af.lsb, 
-        registers.bc.msb, 
-        registers.bc.lsb, 
-        registers.de.msb, 
-        registers.de.lsb, 
-        registers.hl.msb, 
-        registers.hl.lsb, 
+    return std::format("AF:{:04X} BC:{:04X} DE:{:04X} HL:{:04X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}",
+        registers.af.word,
+        registers.bc.word,
+        registers.de.word,
+        registers.hl.word,
         registers.sp, 
         registers.pc, 
         mmu.bus_read(registers.pc), 
@@ -653,11 +655,13 @@ void CPU::RST_tgt3(uint8_t tgt3)
 
 void CPU::HALT()
 {
-    if (imu.get_interrupt_enable() & imu.get_interrupt_flag()) // ie & if & 0x1F != 0
+    auto ie = imu.get_interrupt_enable();
+    auto iflag = imu.get_interrupt_flag();
+    if (ie & iflag) // ie & if & 0x1F != 0
     {
         if (!imu.get_ime())
         {
-            halt_bug = 1;
+            //halt_bug = 1;
         }
     }
     else // ie & if & 0x1F == 0
@@ -759,14 +763,14 @@ void CPU::STOP()
 void CPU::DI()
 {
     // DI doesn't have the 1 cycle delay that EI has
-    ime_scheduled = false;
+    ime_scheduler = 0;
     imu.set_ime(false);
 }
 
 void CPU::EI()
 {
     // EI enables IME the following cycle, not immediately.
-    ime_scheduled = true;
+    ime_scheduler = 1;
 }
 
 // LD [r16], imm8
