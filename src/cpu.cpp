@@ -756,7 +756,7 @@ void CPU::AND_A_r8(uint8_t& r8)
 void CPU::STOP()
 {
     // debug only
-    //exit(1);
+    exit(1);
 }
 
 

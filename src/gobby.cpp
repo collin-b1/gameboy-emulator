@@ -73,19 +73,37 @@ void Gobby::tick_systems()
         uint8_t cpu_cycles = cpu.next_instruction();
         cycles += cpu_cycles;
 
-        for (uint8_t i{ 0 }; i < cpu_cycles * 4; ++i)
+        // PPU Cycle
+        // 4 dots per CPU cycle
+        for (auto i{ 0 }; i < cpu_cycles * 4; ++i)
         {
-            ppu.tick();
+            ppu.next_dot();
         }
 
+        // Timer Cycle
         timer.tick(cpu_cycles);
+
+        // Interrupt
+        
+
+        // DMA
+
+        // Serial
+
+        // Joypad
+
+        if (cycles >= cycles_per_tick)
+        {
+            ppu.render_scanline();
+        }
+
         //std::cout << cycles << " " << cpu.get_state() << std::endl;
     }
 }
 
 int main(int argc, char *argv[])
 {
-    std::string rom_name{"02-interrupts.gb"};
+    std::string rom_name{"instr_timing.gb;"};
 
     if (argc > 1)
     {
@@ -101,10 +119,7 @@ int main(int argc, char *argv[])
     {
         auto frame_start = std::chrono::high_resolution_clock::now();
         
-        for (int i{ 0 }; i < 70224; ++i) // 70224 dots per frame
-        {
-            gobby->tick_systems();
-        }
+        gobby->tick_systems();
 
         auto frame_end = std::chrono::high_resolution_clock::now();
         auto elapsed = frame_end - frame_start;

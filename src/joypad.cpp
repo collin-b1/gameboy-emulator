@@ -1,15 +1,15 @@
 #include "joypad.h"
 
-Joypad::Joypad() :
-    joyp()
+Joypad::Joypad()
+    : joyp(0xFF)
 {}
 
 uint8_t Joypad::read(uint16_t addr) const
 {
     if (addr == 0xFF00)
     {
-        return 0xFF;
-        //return joyp;
+        // Upper two bits always return 1
+        return 0xC0 | joyp.joyp;
     }
     else
     {
@@ -21,6 +21,7 @@ void Joypad::write(uint16_t addr, uint8_t data)
 {
     if (addr == 0xFF00)
     {
-        joyp = (data & 0xF0) | (joyp & 0x0F);
+        // Only bits 5 and 4 are writable
+        joyp.joyp = (data & 0x30) | (joyp.joyp & 0x0F);
     }
 }

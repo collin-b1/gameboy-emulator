@@ -12,7 +12,7 @@ constexpr uint16_t ROM_END = 0x7FFF;
 constexpr uint16_t HEADER_START = 0x100;
 constexpr uint16_t HEADER_END = 0x14F;
 
-enum CARTRIDGE_TYPE
+enum CartridgeType
 {
     ROM_ONLY = 0x00,
     MBC1 = 0x01,

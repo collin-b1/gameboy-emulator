@@ -18,6 +18,7 @@ PPU::PPU(InterruptManager& imu)
     , lcdc(0)
     , scy(0), scx(0)
     , ly(0), lyc(0)
+    , dma(0)
     , bgp(0)
     , obp0(0), obp1(0)
     , wy(0), wx(0), key1(0)
@@ -33,12 +34,13 @@ uint8_t PPU::read(uint16_t addr) const
     switch (addr)
     {
     case 0xFF40: return lcdc.lcdc;
-    case 0xFF41: return stat.stat & (~0x3 | ((ly == lyc) << 2)); // TODO: Finish STAT read/write
+    case 0xFF41: return (stat.stat & ~0x6) | ((ly == lyc) << 2);
     case 0xFF42: return scy;
     case 0xFF43: return scx;
     case 0xFF44: return ly;
     case 0xFF45: return lyc;
-    case 0xFF47: return bgp;
+    case 0xFF46: return dma;
+    case 0xFF47: return bgp.bgp;
     case 0xFF48: return obp0;
     case 0xFF49: return obp1;
     case 0xFF4A: return wy;
@@ -50,24 +52,26 @@ uint8_t PPU::read(uint16_t addr) const
     case 0xFF53: return hdma3;
     case 0xFF54: return hdma4;
     case 0xFF55: return hdma5;
-    case 0xFF68: return bcps;
-    case 0xFF69: return bcpd;
+    case 0xFF68: return bcps.bcps;
+    case 0xFF69: return bcpd.bcpd;
     case 0xFF6A: return ocps;
     case 0xFF6B: return ocpd;
     default:
         if (addr >= VRAM_START && addr <= VRAM_END)
         {
+            // VRAM is only accessible during Modes 0-2
             if (stat.ppu_mode != MODE_VRAM)
             {
                 return vram[addr - VRAM_START];
             }
             else
             {
-                return 0;
+                return 0xFF;
             }
         }
         else if (addr >= OAM_START && addr <= OAM_END)
         {
+            // OAM is accisible during Modes 0-1
             if (stat.ppu_mode != MODE_OAM_SEARCH && stat.ppu_mode != MODE_VRAM)
             {
                 return oam[addr - OAM_START];
@@ -89,12 +93,20 @@ void PPU::write(uint16_t addr, uint8_t data)
     switch (addr)
     {
     case 0xFF40: lcdc.lcdc = data; break;
-    case 0xFF41: /*stat = data;*/ break;  // TODO: Finish STAT read/write
+    case 0xFF41: stat.stat = (data & 0xF8) | (stat.stat & 0x7); break;
     case 0xFF42: scy = data; break;
     case 0xFF43: scx = data; break;
-    case 0xFF44: ly = data; break;
+    case 0xFF44: /*ly = data*/; break; // Read Only
     case 0xFF45: lyc = data; break;
-    case 0xFF47: bgp = data; break;
+    case 0xFF46:
+    {
+        dma = data;
+        // start DMA transfer from ROM or RAM to OAM
+        // written value is transfer src addr divided by 0x100
+        // TODO: implement DMA transfer
+        break;
+    }
+    case 0xFF47: bgp.bgp = data; break;
     case 0xFF48: obp0 = data; break;
     case 0xFF49: obp1 = data; break;
     case 0xFF4A: wy = data; break;
@@ -106,22 +118,40 @@ void PPU::write(uint16_t addr, uint8_t data)
     case 0xFF53: hdma3 = data; break;
     case 0xFF54: hdma4 = data; break;
     case 0xFF55: hdma5 = data; break;
-    case 0xFF68: bcps = data; break;
-    case 0xFF69: bcpd = data; break;
+    case 0xFF68: bcps.bcps = data; break;
+    case 0xFF69: bcpd.bcpd = data; break;
     case 0xFF6A: ocps = data; break;
     case 0xFF6B: ocpd = data; break;
     default: 
     {
         if (addr >= VRAM_START && addr <= VRAM_END)
         {
-            vram[addr - VRAM_START] = data;
+            // VRAM is only accessible during Modes 0-2
+            if (stat.ppu_mode != MODE_VRAM)
+            {
+                vram[addr - VRAM_START] = data;
+            }
         }
         else if (addr >= OAM_START && addr <= OAM_END)
         {
-            oam[addr - OAM_START] = data;
+            // OAM is accisible during Modes 0-1
+            if (stat.ppu_mode != MODE_OAM_SEARCH && stat.ppu_mode != MODE_VRAM)
+            {
+                oam[addr - OAM_START] = data;
+            }
         }
     }
     }
+}
+
+uint8_t PPU::get_viewport_y() const
+{
+    return (scy + 143) % 256;
+}
+
+uint8_t PPU::get_viewport_x() const
+{
+    return (scx + 159) % 256;
 }
 
 const uint8_t* PPU::get_tile_data(uint8_t idx) const
@@ -149,30 +179,42 @@ const uint8_t* PPU::get_tile_data(uint8_t idx) const
     }
 }
 
-void PPU::tick()
+void PPU::next_dot()
 {
     if (!lcdc.lcd_ppu_enable) return;
 
     switch (stat.ppu_mode)
     {
+    // Mode 2: OAM Scan
+    // Duration: 80 dots
     case MODE_OAM_SEARCH:
-
+        // Search for OBJs which overlap this scanline
+        
         break;
+
+    // Mode 3: Drawing Pixels
+    // Duration: 172 to 289 dots
     case MODE_VRAM:
-        scanline();
         break;
-    case MODE_HBLANK:
 
+    // Mode 0: Horizontal Blank
+    // Duration: 376 - Mode 3's duration
+    case MODE_HBLANK:
         break;
+
+    // Mode 1: Vertical Blank
+    // Duration: 4560 dots
     case MODE_VBLANK:
 
         break;
+
+    // Unreachable
     default:
         exit(8);
     }
 }
 
-void PPU::scanline()
+void PPU::render_scanline()
 {
-
+    
 }
