@@ -6,14 +6,14 @@
 #include "interrupt.h"
 #include "system.h"
 
-class Timer : public IMemory, public ITickableSystem
+class Timer final : public IMemory, public ITickableSystem
 {
 public:
-    Timer(InterruptManager&);
-    uint8_t read(uint16_t) const override;
+    explicit Timer(InterruptManager&);
+    [[nodiscard]] uint8_t read(uint16_t) const override;
     void write(uint16_t, uint8_t) override;
     void tick(uint16_t) override;
-    std::string get_state() const;
+    [[nodiscard]] std::string get_state() const;
 private:
     uint64_t _cycles;
 

@@ -1,4 +1,5 @@
 #include "ppu.h"
+
 #include <iostream>
 
 enum PPUMode : uint8_t
@@ -11,11 +12,11 @@ enum PPUMode : uint8_t
 
 PPU::PPU(InterruptManager& imu)
     : imu(imu)
-    , renderer{}
-    , stat(0)
+    , dot_accumulator(0)
     , vram()
     , oam()
     , lcdc(0)
+    , stat(0)
     , scy(0), scx(0)
     , ly(0), lyc(0)
     , dma(0)
@@ -34,7 +35,7 @@ uint8_t PPU::read(uint16_t addr) const
     switch (addr)
     {
     case 0xFF40: return lcdc.lcdc;
-    case 0xFF41: return (stat.stat & ~0x6) | ((ly == lyc) << 2);
+    case 0xFF41: return (stat.stat & ~0x6) | (ly == lyc) << 2;
     case 0xFF42: return scy;
     case 0xFF43: return scx;
     case 0xFF44: return ly;
@@ -154,67 +155,137 @@ uint8_t PPU::get_viewport_x() const
     return (scx + 159) % 256;
 }
 
+void PPU::tick(const uint16_t cycles)
+{
+    dot_accumulator += cycles * DOTS_PER_CYCLE;
+
+    if (dot_accumulator >= DOTS_PER_CYCLE)
+    {
+      render_scanline();
+      dot_accumulator -= DOTS_PER_CYCLE;
+    }
+}
+
 const uint8_t* PPU::get_tile_data(uint8_t idx) const
 {
     // LCDC.4 == 1, 0x8000-0x8FFF
     if (lcdc.bg_window_tile_data_area)
     {
         // 0x8000 is base pointer, Block 0 is 0-127, Block 1 is 128-255
-        return vram.data() + (idx * 16);
+        return vram.data() + idx * 16;
     }
 
     // LCDC.4 == 0
+    // Block 2 (0x9000-0x97FF)
+    if (idx < 128)
+    {
+        return vram.data() + 0x1000 + idx * 16;
+    }
+    // Block 1 (0x8800-0x8FFF)
     else
     {
-        // Block 2 (0x9000-0x97FF)
-        if (idx < 128)
-        {
-            return vram.data() + 0x1000 + (idx * 16);
-        }
-        // Block 1 (0x8800-0x8FFF)
-        else
-        {
-            return vram.data() + 0x800 + ((idx - 128) * 16);
-        }
+        return vram.data() + 0x800 + (idx - 128) * 16;
     }
 }
 
-void PPU::next_dot()
+// void PPU::next_dot()
+// {
+//     if (!lcdc.lcd_ppu_enable) return;
+//
+//     renderer.render_frame_buffer();
+//
+//     switch (stat.ppu_mode)
+//     {
+//     // Mode 2: OAM Scan
+//     // Duration: 80 dots
+//     case MODE_OAM_SEARCH:
+//         // Search for OBJs which overlap this scanline
+//
+//         break;
+//
+//     // Mode 3: Drawing Pixels
+//     // Duration: 172 to 289 dots
+//     case MODE_VRAM:
+//         // renderer.push_pixel(scx, scy, );
+//         break;
+//
+//     // Mode 0: Horizontal Blank
+//     // Duration: 376 - Mode 3's duration
+//     case MODE_HBLANK:
+//         break;
+//
+//     // Mode 1: Vertical Blank
+//     // Duration: 4560 dots
+//     case MODE_VBLANK:
+//
+//         break;
+//
+//     // Unreachable
+//     default:
+//         exit(8);
+//     }
+// }
+
+Object PPU::get_object_from_oam(uint8_t idx)
 {
-    if (!lcdc.lcd_ppu_enable) return;
+    const auto obj = reinterpret_cast<Object*>(oam.data() + idx * 4);
 
-    switch (stat.ppu_mode)
-    {
-    // Mode 2: OAM Scan
-    // Duration: 80 dots
-    case MODE_OAM_SEARCH:
-        // Search for OBJs which overlap this scanline
-        
-        break;
-
-    // Mode 3: Drawing Pixels
-    // Duration: 172 to 289 dots
-    case MODE_VRAM:
-        break;
-
-    // Mode 0: Horizontal Blank
-    // Duration: 376 - Mode 3's duration
-    case MODE_HBLANK:
-        break;
-
-    // Mode 1: Vertical Blank
-    // Duration: 4560 dots
-    case MODE_VBLANK:
-
-        break;
-
-    // Unreachable
-    default:
-        exit(8);
-    }
+    return *obj;
 }
 
 void PPU::render_scanline()
 {
-    
+    if (!lcdc.lcd_ppu_enable) return;
+
+    if (ly < SCREEN_HEIGHT) {
+        // OAM search
+        auto objs_found{ 0 };
+        Object objs[10];
+        for (auto obj_i{ 0 }; obj_i < 40; ++obj_i)
+        {
+            const auto obj = get_object_from_oam(obj_i);
+            if (ly >= obj.y && ly <= obj.y + 8)
+            {
+                objs[objs_found] = obj;
+            }
+        }
+
+        // Push pixel to frame buffer
+        for (auto x{ 0 }; x < SCREEN_WIDTH; ++x)
+        {
+            // TODO: Get Tilemap index from VRAM. Pull BG tile data and display correct line
+            const auto pixel_x = (x + scx) % SCREEN_WIDTH;
+            const auto pixel_y = (ly + scy) % SCREEN_HEIGHT;
+
+            const auto tile_x = pixel_x / 8;
+            const auto tile_y = pixel_y / 8;
+
+            const auto tile_map = lcdc.bg_tile_map_area ? 0x1C00 : 0x1800;
+
+            const auto tile_map_index = vram[tile_map + (32 * tile_y + tile_x)];
+
+            const auto tile_data = get_tile_data(tile_map_index);
+
+            // std::cout << tile_data[0] << std::endl;
+
+            const auto translated_x = pixel_x % 8;
+            const auto translated_y = pixel_y % 8;
+
+            const auto tile_upper = *(tile_data + 2 * translated_y);
+            const auto tile_lower = *(tile_data + 2 * translated_y + 1);
+
+            const auto tile_pixel = ((tile_upper >> (7 - translated_x)) & 0x1) | (((tile_lower >> (7 - translated_x)) & 0x1) << 1);
+
+            const auto pixel_color = (bgp.bgp >> tile_pixel) & 0x3;
+
+            renderer.push_pixel(pixel_x, pixel_y, pixel_color);
+        }
+    }
+
+    // Increment LY
+    ly = (ly + 1) % 154;
+}
+
+void PPU::draw_frame() const {
+    renderer.render_frame_buffer();
 }

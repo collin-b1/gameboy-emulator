@@ -2,6 +2,8 @@
 #include <string>
 #include <array>
 #include <cstdint>
+#include <fstream>
+
 #include "memory.h"
 
 constexpr uint16_t BOOT_ROM_SIZE = 0x100;
@@ -71,7 +73,7 @@ struct CartHeaders
     uint16_t global_checksum;           // 0x14E-0x14F
 };
 
-class Cart : public IMemory
+class Cart final : public IMemory
 {
 public:
     Cart();
@@ -79,7 +81,7 @@ public:
     bool load_rom(std::string&);
     bool load_boot_rom(std::string&);
     bool load_header();
-    uint8_t read(uint16_t) const override;
+    [[nodiscard]] uint8_t read(uint16_t) const override;
     void write(uint16_t, uint8_t) override;
     void print_headers() const;
 

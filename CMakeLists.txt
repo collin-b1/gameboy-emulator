@@ -5,12 +5,12 @@ project(Gobby)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# Include vcpkg
-if(DEFINED ENV{VCPKG_ROOT})
-    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
-else()
-    message(FATAL_ERROR "Please define VCPKG_ROOT environment variable.")
-endif()
+## Include vcpkg
+#if(DEFINED ENV{VCPKG_ROOT})
+#    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+#else()
+#    message(FATAL_ERROR "Please define VCPKG_ROOT environment variable.")
+#endif()
 
 find_package(SDL2 CONFIG REQUIRED)
 

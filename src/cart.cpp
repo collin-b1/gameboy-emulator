@@ -4,12 +4,12 @@
 
 Cart::Cart()
     : headers() 
-    , bank(0)
-    , boot_rom()
     , rom()
+    , boot_rom()
+    , bank(0)
 {}
 
-uint8_t Cart::read(uint16_t addr) const
+uint8_t Cart::read(const uint16_t addr) const
 {
     if (addr < 0x00FF)
     {
@@ -29,7 +29,7 @@ uint8_t Cart::read(uint16_t addr) const
     return rom.at(addr);
 }
 
-void Cart::write(uint16_t addr, uint8_t data)
+void Cart::write(const uint16_t addr, const uint8_t data)
 {
     if (addr == 0xFF50)
     {
@@ -74,7 +74,7 @@ bool Cart::load_header()
 void Cart::print_headers() const
 {
     std::cout << "Title: " << headers.title.title_only << std::endl;
-    std::cout << "CGB flag: 0x" << std::hex << (int)headers.title.cgb << std::endl;
+    std::cout << "CGB flag: 0x" << std::hex << static_cast<int>(headers.title.cgb) << std::endl;
     std::cout << "Entrypoint: 0x" <<
         std::hex << static_cast<int>(headers.entrypoint[0]) << std::dec << " 0x" <<
         std::hex << static_cast<int>(headers.entrypoint[1]) << std::dec << " 0x" <<

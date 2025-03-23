@@ -14,8 +14,8 @@ class Gobby
 {
 public:
     Gobby();
-    Gobby(std::string);
-    Gobby(std::string, std::string);
+    Gobby(const std::string &);
+    Gobby(const std::string &, const std::string &);
     void tick_systems();
     bool load_game(std::string rom, std::string boot_rom);
 private:

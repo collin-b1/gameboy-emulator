@@ -3,7 +3,6 @@
 #include <string>
 #include "register.h"
 #include "interrupt.h"
-#include "system.h"
 #include "mmu.h"
 
 class CPU
@@ -20,8 +19,8 @@ public:
     void handle_interrupts();
     void service_interrupt(InterruptSource);
 
-    void debug_print();
-    std::string get_state() const;
+    void debug_print() const;
+    [[nodiscard]] std::string get_state() const;
 
     // Block 0
     void NOP();

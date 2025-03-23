@@ -13,32 +13,58 @@ constexpr uint16_t VRAM_END = 0x9FFF;
 constexpr uint16_t OAM_START = 0xFE00;
 constexpr uint16_t OAM_END = 0xFE9F;
 
-enum PPU_Mode;
+constexpr uint32_t DOTS_PER_CYCLE = 4;
+constexpr uint32_t CYCLES_PER_SCANLINE = 114 * DOTS_PER_CYCLE;
+constexpr uint32_t CYCLES_PER_FRAME = 154 * CYCLES_PER_SCANLINE;
 
-class PPU : public IMemory
+struct Object
+{
+    uint8_t y;
+    uint8_t x;
+    uint8_t tile_index;
+    union
+    {
+        uint8_t flags;
+        struct
+        {
+            uint8_t priority : 1;
+            uint8_t y_flip : 1;
+            uint8_t x_flip : 1;
+            uint8_t dmg_palette : 1;
+            uint8_t bank : 1;
+            uint8_t cgb_palette : 3;
+        };
+    } flags;
+};
+
+class PPU final : public IMemory
 {
 public:
     PPU(InterruptManager& imu);
 
-    uint8_t read(uint16_t) const override;
+    [[nodiscard]] uint8_t read(uint16_t) const override;
     void write(uint16_t, uint8_t) override;
 
     // Viewport operations
-    // Calculates the bottom cordinate of the viewport
-    uint8_t get_viewport_y() const;
-    // Calculates the right cordinate of the viewport
-    uint8_t get_viewport_x() const;
+    // Calculates the bottom coordinate of the viewport
+    [[nodiscard]] uint8_t get_viewport_y() const;
+    // Calculates the right coordinate of the viewport
+    [[nodiscard]] uint8_t get_viewport_x() const;
 
     // Tile operations
-    const uint8_t* get_tile_data(uint8_t) const;
+    [[nodiscard]] Object get_object_from_oam(uint8_t);
+    [[nodiscard]] const uint8_t* get_tile_data(uint8_t) const;
 
-    void next_dot();
+    void tick(uint16_t);
     void render_scanline();
+    void draw_frame() const;
 
 private:
     InterruptManager& imu;
 
     Renderer renderer;
+
+    uint32_t dot_accumulator;
 
     // 0x8000 - 0x9FFF: VRAM
     std::array<uint8_t, VRAM_END - VRAM_START + 1> vram;
@@ -117,7 +143,7 @@ private:
     // 0xFF48 - 0xFF49: OBP0, OBP1 - Object Palette Data (non-CGB mode only)
     uint8_t obp0, obp1;
 
-    // 0xFF4A – 0xFF4B: WY, WX: Window Y position and (X position + 7)
+    // 0xFF4A ï¿½ 0xFF4B: WY, WX: Window Y position and (X position + 7)
     // Window will be visible if wx in [0, 166] and wy in [0, 143]
     uint8_t wy, wx;
 

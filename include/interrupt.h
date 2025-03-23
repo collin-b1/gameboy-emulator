@@ -17,7 +17,7 @@ class InterruptManager : IMemory
 public:
     InterruptManager();
 
-    uint8_t read(uint16_t addr) const override;
+    [[nodiscard]] uint8_t read(uint16_t addr) const override;
     void write(uint16_t addr, uint8_t data) override;
 
     void request_interrupt(InterruptSource);
@@ -26,8 +26,8 @@ public:
     bool get_ime() const;
     void set_ime(bool);
 
-    uint8_t get_interrupt_flag() const;
-    uint8_t get_interrupt_enable() const;
+    [[nodiscard]] uint8_t get_interrupt_flag() const;
+    [[nodiscard]] uint8_t get_interrupt_enable() const;
     
 
 private:

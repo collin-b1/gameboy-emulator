@@ -112,9 +112,9 @@ uint8_t CPU::next_instruction()
 
 void CPU::handle_interrupts()
 {
-    auto iflag = imu.get_interrupt_flag();
-    auto ie = imu.get_interrupt_enable();
-    auto ime = imu.get_ime();
+    const auto iflag = imu.get_interrupt_flag();
+    const auto ie = imu.get_interrupt_enable();
+    const auto ime = imu.get_ime();
 
     if (!ime) return;
     
@@ -140,7 +140,7 @@ void CPU::handle_interrupts()
     }
 }
 
-void CPU::service_interrupt(InterruptSource source)
+void CPU::service_interrupt(const InterruptSource source)
 {
     // Push PC to stack
     PUSH_r16stk(registers.pc);
@@ -155,7 +155,7 @@ void CPU::service_interrupt(InterruptSource source)
     registers.pc = 0x00FF & source;
 }
 
-void CPU::debug_print()
+void CPU::debug_print() const
 {
     std::cout << get_state() << std::endl;
 }
@@ -536,19 +536,20 @@ uint8_t CPU::execute_cb_opcode(uint8_t cb_opcode)
 
     default:
     {
-        uint8_t bit = (cb_opcode & 0b00111000) >> 3;
+        const uint8_t bit = (cb_opcode & 0b00111000) >> 3;
         if (cb_opcode >= 0x40 && cb_opcode <= 0x7F)
         {
             switch (cb_opcode % 0x08)
             {
-            case 0x00: BIT_b3_r8(bit, registers.bc.msb); break;
-            case 0x01: BIT_b3_r8(bit, registers.bc.lsb); break;
-            case 0x02: BIT_b3_r8(bit, registers.de.msb); break;
-            case 0x03: BIT_b3_r8(bit, registers.de.lsb); break;
-            case 0x04: BIT_b3_r8(bit, registers.hl.msb); break;
-            case 0x05: BIT_b3_r8(bit, registers.hl.lsb); break;
-            case 0x06: BIT_b3_r16mem(bit, registers.hl.word); break;
-            case 0x07: BIT_b3_r8(bit, registers.af.msb); break;
+                case 0x00: BIT_b3_r8(bit, registers.bc.msb); break;
+                case 0x01: BIT_b3_r8(bit, registers.bc.lsb); break;
+                case 0x02: BIT_b3_r8(bit, registers.de.msb); break;
+                case 0x03: BIT_b3_r8(bit, registers.de.lsb); break;
+                case 0x04: BIT_b3_r8(bit, registers.hl.msb); break;
+                case 0x05: BIT_b3_r8(bit, registers.hl.lsb); break;
+                case 0x06: BIT_b3_r16mem(bit, registers.hl.word); break;
+                case 0x07: BIT_b3_r8(bit, registers.af.msb); break;
+                default: exit(7);
             }
         }
         else if (cb_opcode >= 0x80 && cb_opcode <= 0xBF)
@@ -563,6 +564,7 @@ uint8_t CPU::execute_cb_opcode(uint8_t cb_opcode)
             case 0x05: RES_b3_r8(bit, registers.hl.lsb); break;
             case 0x06: RES_b3_r16mem(bit, registers.hl.word); break;
             case 0x07: RES_b3_r8(bit, registers.af.msb); break;
+            default: exit(7);
             }
         }
         else if (cb_opcode >= 0xC0 && cb_opcode <= 0xFF)
@@ -577,11 +579,12 @@ uint8_t CPU::execute_cb_opcode(uint8_t cb_opcode)
             case 0x05: SET_b3_r8(bit, registers.hl.lsb); break;
             case 0x06: SET_b3_r16mem(bit, registers.hl.word); break;
             case 0x07: SET_b3_r8(bit, registers.af.msb); break;
+            default: exit(7);
             }
         }
         else
         {
-            std::cout << "Illegal CB opcode: " << std::hex << (int)cb_opcode << std::endl;
+            std::cout << "Illegal CB opcode: " << std::hex << static_cast<int>(cb_opcode) << std::endl;
             exit(1);
         }
     }

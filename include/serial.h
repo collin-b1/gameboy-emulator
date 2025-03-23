@@ -3,11 +3,11 @@
 #include <cstdint>
 #include "memory.h"
 
-class Serial : public IMemory
+class Serial final : public IMemory
 {
 public:
     Serial();
-    uint8_t read(uint16_t) const override;
+    [[nodiscard]] uint8_t read(uint16_t) const override;
     void write(uint16_t, uint8_t) override;
 
 private:
