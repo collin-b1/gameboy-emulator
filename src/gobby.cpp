@@ -28,6 +28,7 @@ Gobby::Gobby(const std::string &rom)
     , cpu{ mmu, interrupts }
 {
     if (!load_game(rom, "")) {
+        std::cout << "Rom not found: " << rom.c_str() << std::endl;
         exit(1);
     }
     cpu.init_post_boot();
@@ -44,6 +45,7 @@ Gobby::Gobby(const std::string &rom, const std::string &boot_rom)
     , cpu{ mmu, interrupts }
 {
     if (!load_game(rom, boot_rom)) {
+        std::cout << "Rom not found." << std::endl;
         exit(1);
     }
 }
@@ -92,7 +94,7 @@ void Gobby::tick_systems()
 
 int main(int argc, char *argv[])
 {
-    std::string rom_name{ "06-ld r,r.gb" };
+    std::string rom_name{ "01-special.gb" };
 
     if (argc > 1)
     {
