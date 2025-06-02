@@ -10,8 +10,9 @@ enum PPUMode : uint8_t
     MODE_VRAM = 3
 };
 
-PPU::PPU(InterruptManager& imu)
+PPU::PPU(InterruptManager& imu, Renderer& renderer)
     : imu(imu)
+    , renderer(renderer)
     , dot_accumulator(0)
     , vram()
     , oam()
@@ -135,7 +136,7 @@ void PPU::write(uint16_t addr, uint8_t data)
         }
         else if (addr >= OAM_START && addr <= OAM_END)
         {
-            // OAM is accisible during Modes 0-1
+            // OAM is accessible during Modes 0-1
             if (stat.ppu_mode != MODE_OAM_SEARCH && stat.ppu_mode != MODE_VRAM)
             {
                 oam[addr - OAM_START] = data;
@@ -286,6 +287,6 @@ void PPU::render_scanline()
     ly = (ly + 1) % 154;
 }
 
-void PPU::draw_frame() const {
+void PPU::draw_frame() {
     renderer.render_frame_buffer();
 }

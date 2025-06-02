@@ -9,15 +9,14 @@
 #include "interrupt.h"
 
 #include <memory>
+#include <QMainWindow>
 
 class Gobby
 {
 public:
-    Gobby();
-    Gobby(const std::string &);
-    Gobby(const std::string &, const std::string &);
+    Gobby(QMainWindow*);
     void tick_systems();
-    bool load_game(std::string rom, std::string boot_rom);
+    bool load_game(const std::string& rom, const std::string& boot_rom);
 private:
     uint64_t clock;
 
@@ -25,6 +24,7 @@ private:
     CPU cpu;
     MMU mmu;
     PPU ppu;
+    Renderer renderer;
     Timer timer;
     InterruptManager interrupts;
 };

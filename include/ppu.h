@@ -40,7 +40,7 @@ struct Object
 class PPU final : public IMemory
 {
 public:
-    PPU(InterruptManager& imu);
+    PPU(InterruptManager& imu, Renderer& renderer);
 
     [[nodiscard]] uint8_t read(uint16_t) const override;
     void write(uint16_t, uint8_t) override;
@@ -57,12 +57,12 @@ public:
 
     void tick(uint16_t);
     void render_scanline();
-    void draw_frame() const;
+    void draw_frame();
 
 private:
     InterruptManager& imu;
 
-    Renderer renderer;
+    Renderer& renderer;
 
     uint32_t dot_accumulator;
 

@@ -44,7 +44,11 @@ void Cart::write(const uint16_t addr, const uint8_t data)
 
 bool Cart::load_boot_rom(std::string& path)
 {
-    return load_buffer(path, boot_rom);
+    if (!path.empty()) {
+        return load_buffer(path, boot_rom);
+    } else {
+        return true;
+    }
 }
 
 bool Cart::load_rom(std::string& path)

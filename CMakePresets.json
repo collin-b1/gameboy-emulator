@@ -2,27 +2,17 @@
   "version": 3,
   "cmakeMinimumRequired": {
     "major": 3,
-    "minor": 10,
-    "patch": 0
+    "minor": 21
   },
   "configurePresets": [
     {
       "name": "x64-Debug",
-      "hidden": false,
+      "displayName": "x64 Debug (Ninja)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/x64-Debug",
       "cacheVariables": {
-        "CMAKE_CXX_STANDARD": "20",
-        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_TOOLCHAIN_FILE": "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        "CMAKE_BUILD_TYPE": "Debug"
       }
-    }
-  ],
-  "buildPresets": [
-    {
-      "name": "x64-Debug",
-      "configurePreset": "x64-Debug"
     }
   ]
 }
