@@ -51,7 +51,7 @@ CPU::CPU(MMU& mmu, InterruptManager& imu)
     , mmu(mmu)
     , imu(imu)
     , ime_scheduler(false)
-    , is_halted(false) 
+    , is_halted(false)
     , is_stopped(false)
 {}
 
@@ -100,7 +100,7 @@ uint8_t CPU::next_instruction()
         imu.set_ime(true);
         ime_scheduler = false;
     }
-    
+
     // Fetch, decode, and execute opcode
     auto opcode = mmu.bus_read(registers.pc++);
     auto cycles = execute_opcode(opcode);
@@ -117,7 +117,7 @@ void CPU::handle_interrupts()
     const auto ime = imu.get_ime();
 
     if (!ime) return;
-    
+
     if (iflag & ie & 0x1)
     {
         service_interrupt(InterruptSource::INTERRUPT_VBLANK);
@@ -167,11 +167,11 @@ std::string CPU::get_state() const
         registers.bc.word,
         registers.de.word,
         registers.hl.word,
-        registers.sp, 
-        registers.pc, 
-        mmu.bus_read(registers.pc), 
-        mmu.bus_read(registers.pc + 1), 
-        mmu.bus_read(registers.pc + 2), 
+        registers.sp,
+        registers.pc,
+        mmu.bus_read(registers.pc),
+        mmu.bus_read(registers.pc + 1),
+        mmu.bus_read(registers.pc + 2),
         mmu.bus_read(registers.pc + 3)
     );
 }
@@ -524,7 +524,7 @@ uint8_t CPU::execute_cb_opcode(uint8_t cb_opcode)
     case 0x35: SWAP_r8(registers.hl.lsb); break;
     case 0x36: SWAP_r16mem(registers.hl.word); break;
     case 0x37: SWAP_r8(registers.af.msb); break;
-    
+
     case 0x38: SRL_r8(registers.bc.msb); break;
     case 0x39: SRL_r8(registers.bc.lsb); break;
     case 0x3A: SRL_r8(registers.de.msb); break;
@@ -676,7 +676,7 @@ void CPU::HALT()
 void CPU::ADD_A_r8(uint8_t& r8)
 {
     uint8_t result = registers.af.msb + r8;
-    
+
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(Registers::addition_half_carry(registers.af.msb, r8));
@@ -689,7 +689,7 @@ void CPU::ADC_A_r8(uint8_t& r8)
 {
     uint8_t carry = registers.get_carry_flag();
     uint8_t result = registers.af.msb + r8 + carry;
-    
+
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
 
@@ -712,7 +712,7 @@ void CPU::ADC_A_r8(uint8_t& r8)
 void CPU::SUB_A_r8(uint8_t& r8)
 {
     uint8_t result = registers.af.msb - r8;
-    
+
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(1);
     registers.set_half_carry_flag(Registers::subtraction_half_carry(registers.af.msb, r8));
@@ -735,7 +735,7 @@ void CPU::SBC_A_r8(uint8_t& r8)
         Registers::subtraction_carry(registers.af.msb, r8) ||
         Registers::subtraction_carry(registers.af.msb, carry) ||
         Registers::subtraction_carry(registers.af.msb - carry, r8);
-    
+
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(1);
     registers.set_half_carry_flag(has_half_carry);
@@ -747,7 +747,7 @@ void CPU::SBC_A_r8(uint8_t& r8)
 void CPU::AND_A_r8(uint8_t& r8)
 {
     uint8_t result = registers.af.msb & r8;
-    
+
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(1);
@@ -970,7 +970,7 @@ void CPU::DAA()
     {
         a += offset;
     }
-    
+
     registers.set_zero_flag(a == 0);
     registers.set_half_carry_flag(0);
     registers.set_carry_flag(needs_carry);

@@ -4,19 +4,21 @@
 #include <string>
 
 #include "cpu.h"
+#include "debug.h"
+#include "interrupt.h"
 #include "mmu.h"
 #include "ppu.h"
-#include "interrupt.h"
 
-#include <memory>
 #include <QMainWindow>
+#include <memory>
 
 class Gobby
 {
 public:
-    Gobby(QMainWindow*);
+    Gobby(QMainWindow *);
     void tick_systems();
-    bool load_game(const std::string& rom, const std::string& boot_rom);
+    bool load_game(const std::string &rom, const std::string &boot_rom);
+
 private:
     uint64_t clock;
 
@@ -27,4 +29,5 @@ private:
     Renderer renderer;
     Timer timer;
     InterruptManager interrupts;
+    DebugWindow debug;
 };

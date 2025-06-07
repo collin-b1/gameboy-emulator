@@ -9,9 +9,9 @@ set(CMAKE_AUTOMOC ON)        # For Qt meta-object compiler
 set(CMAKE_AUTORCC ON)        # If using Qt resources
 set(CMAKE_AUTOUIC ON)        # If using .ui files
 
-if(MSVC)
+if (MSVC)
     add_compile_options(/Zc:__cplusplus)
-endif()
+endif ()
 
 ## Include vcpkg
 #if(DEFINED ENV{VCPKG_ROOT})
@@ -21,7 +21,7 @@ endif()
 #endif()
 
 #find_package(SDL2 CONFIG REQUIRED)
-find_package(Qt6 COMPONENTS Core Gui Widgets REQUIRED)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
 # Include directories
 include_directories(include)
@@ -34,12 +34,10 @@ file(GLOB_RECURSE HEADERS "include/*.h" "include/*.hpp")
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
 target_link_libraries(${PROJECT_NAME}
-    PRIVATE
-#    $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
-#    $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
-    Qt6::Core
-    Qt6::Gui
-    Qt6::Widgets
+        PRIVATE
+        Qt6::Core
+        Qt6::Gui
+        Qt6::Widgets
 )
 
 target_compile_definitions(Gobby PRIVATE ROMS_DIRECTORY="\"roms/\"")

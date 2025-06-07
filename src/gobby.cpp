@@ -1,31 +1,33 @@
 ﻿#include "gobby.h"
+#include "debug.h"
 #include "ppu.h"
 
-#include <memory>
-#include <iostream>
-#include <chrono>
-#include <thread>
 #include <QApplication>
 #include <QMainWindow>
 #include <QTimer>
+#include <chrono>
+#include <iostream>
+#include <memory>
+#include <thread>
 
-Gobby::Gobby(QMainWindow* window)
+Gobby::Gobby(QMainWindow *window)
     : clock(0)
     , cart{}
     , interrupts{}
-    , timer{ interrupts }
+    , timer{interrupts}
     , renderer{}
-    , ppu{ interrupts, renderer }
-    , mmu{ cart, ppu, interrupts, timer }
-    , cpu{ mmu, interrupts }
+    , debug{}
+    , ppu{interrupts, renderer}
+    , mmu{cart, ppu, interrupts, timer}
+    , cpu{mmu, interrupts}
 {
     window->setCentralWidget(&renderer);
 }
 
-auto Gobby::load_game(const std::string& rom_name, const std::string& boot_rom) -> bool
+auto Gobby::load_game(const std::string &rom_name, const std::string &boot_rom) -> bool
 {
-    std::string rom_path{ rom_name };
-    std::string boot_rom_path{ boot_rom };
+    std::string rom_path{rom_name};
+    std::string boot_rom_path{boot_rom};
 
     bool rom_loaded = cart.load_rom(rom_path);
     bool boot_rom_loaded = cart.load_boot_rom(boot_rom_path);
@@ -47,7 +49,7 @@ auto Gobby::load_game(const std::string& rom_name, const std::string& boot_rom) 
 
 void Gobby::tick_systems()
 {
-    uint32_t cycles{ 0 };
+    uint32_t cycles{0};
     while (cycles < CYCLES_PER_FRAME)
     {
         const uint8_t cpu_cycles = cpu.next_instruction();
@@ -69,7 +71,7 @@ auto main(int argc, char *argv[]) -> int
     QApplication app(argc, argv);
     QMainWindow window;
 
-    std::string rom_path{ R"(roms\snake.gb)" };
+    std::string rom_path{R"(roms\snake.gb)"};
     std::string boot_rom_path{R"(roms\dmg_boot.bin)"};
 
     if (argc > 1)
@@ -78,31 +80,30 @@ auto main(int argc, char *argv[]) -> int
     }
 
     const auto gobby = std::make_unique<Gobby>(&window);
-    if (!gobby->load_game(rom_path, boot_rom_path)) {
+    if (!gobby->load_game(rom_path, boot_rom_path))
+    {
         std::cout << "Rom not found!" << std::endl;
         exit(1);
     }
 
     window.show();
 
-//    bool cpu_running = true;
-//    const auto frame_duration = std::chrono::duration<double, std::milli>(16.74); // Each frame is ~16.74ms
+    //    bool cpu_running = true;
+    //    const auto frame_duration = std::chrono::duration<double, std::milli>(16.74); // Each frame is ~16.74ms
 
-
-
-//    while (cpu_running)
-//    {
-//        auto frame_start = std::chrono::high_resolution_clock::now();
-//
-//        gobby->tick_systems();
-//
-//        auto frame_end = std::chrono::high_resolution_clock::now();
-//
-//        if (auto elapsed = frame_end - frame_start; elapsed < frame_duration)
-//        {
-//            std::this_thread::sleep_for(frame_duration);
-//        }
-//    }
+    //    while (cpu_running)
+    //    {
+    //        auto frame_start = std::chrono::high_resolution_clock::now();
+    //
+    //        gobby->tick_systems();
+    //
+    //        auto frame_end = std::chrono::high_resolution_clock::now();
+    //
+    //        if (auto elapsed = frame_end - frame_start; elapsed < frame_duration)
+    //        {
+    //            std::this_thread::sleep_for(frame_duration);
+    //        }
+    //    }
 
     QTimer timer;
     QObject::connect(&timer, &QTimer::timeout, [&]() {

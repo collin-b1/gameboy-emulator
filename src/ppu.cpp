@@ -73,7 +73,7 @@ uint8_t PPU::read(uint16_t addr) const
         }
         else if (addr >= OAM_START && addr <= OAM_END)
         {
-            // OAM is accisible during Modes 0-1
+            // OAM is accessible during Modes 0-1
             if (stat.ppu_mode != MODE_OAM_SEARCH && stat.ppu_mode != MODE_VRAM)
             {
                 return oam[addr - OAM_START];
