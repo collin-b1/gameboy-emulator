@@ -1,20 +1,14 @@
 #include "mmu.h"
+#include "ppu.h"
 #include <cstdint>
 #include <iostream>
 
-MMU::MMU(Cart& cart, PPU& ppu, InterruptManager& imu, Timer& timer)
-    : cart(cart)
-    , ppu(ppu)
-    , imu(imu)
-    , wram()
-    , hram()
-    , timer(timer)
-    , serial()
-    , joypad()
-    , svbk(0)
-{}
+MMU::MMU(Cart &cart, PPU &ppu, InterruptManager &imu, Timer &timer)
+    : cart(cart), ppu(ppu), imu(imu), wram(), io(), hram(), timer(timer), serial(), joypad(), svbk(0)
+{
+}
 
-uint8_t MMU::bus_read(uint16_t addr) const
+u8 MMU::bus_read(u16 addr) const
 {
     // Cartridge ROM
     if (addr >= 0x0000 && addr <= 0x7FFF)
@@ -126,12 +120,6 @@ uint8_t MMU::bus_read(uint16_t addr) const
         return svbk;
     }
 
-    // Interrupt Flag (IF)
-    else if (addr == 0xFF0F)
-    {
-        return imu.read(addr);
-    }
-
     // High RAM (HRAM)
     else if (addr >= 0xFF80 && addr <= 0xFFFE)
     {
@@ -145,13 +133,13 @@ uint8_t MMU::bus_read(uint16_t addr) const
     }
     else
     {
-        std::cerr << "\nMMU read address not implemented! At: 0x"<< std::hex << addr << std::endl;
+        std::cerr << "\nMMU read address not implemented! At: 0x" << std::hex << addr << std::endl;
     }
 
     return 0;
 }
 
-void MMU::bus_write(uint16_t addr, uint8_t data)
+void MMU::bus_write(u16 addr, u8 data)
 {
     // Cartridge ROM
     if (addr >= 0x0000 && addr <= 0x7FFF)
@@ -266,7 +254,7 @@ void MMU::bus_write(uint16_t addr, uint8_t data)
     // Interrupt Flag (IF)
     else if (addr == 0xFF0F)
     {
-        //std::cout << "[IMU] Write 0x" << std::hex << addr << ": 0x" << static_cast<int>(data) << std::endl;
+        // std::cout << "[IMU] Write 0x" << std::hex << addr << ": 0x" << static_cast<int>(data) << std::endl;
         imu.write(addr, data);
     }
 
@@ -279,26 +267,27 @@ void MMU::bus_write(uint16_t addr, uint8_t data)
     // Interrupt Enable (IE)
     else if (addr == 0xFFFF)
     {
-        //std::cout << "[IMU] Write 0x" << std::hex << addr << ": 0x" << static_cast<int>(data) << std::endl;
+        // std::cout << "[IMU] Write 0x" << std::hex << addr << ": 0x" << static_cast<int>(data) << std::endl;
         imu.write(addr, data);
     }
+
     else
     {
         std::cerr << "\nMMU write address not implemented! At: 0x" << std::hex << addr << std::endl;
     }
 }
 
-uint16_t MMU::bus_read_word(uint16_t addr) const
+u16 MMU::bus_read_word(u16 addr) const
 {
     return (0xFF & bus_read(addr) | (bus_read(addr + 1) << 8));
 }
 
-void MMU::bus_write_word(uint16_t addr, uint16_t data)
+void MMU::bus_write_word(u16 addr, u16 data)
 {
-    uint8_t lsb = data & 0xFF;
+    u8 lsb = data & 0xFF;
     bus_write(addr, lsb);
 
-    uint8_t msb = (data >> 8) & 0xFF;
+    u8 msb = (data >> 8) & 0xFF;
     bus_write(addr + 1, msb);
 }
 

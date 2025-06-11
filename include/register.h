@@ -1,23 +1,22 @@
 #pragma once
-#include <cstdint>
+#include "definitions.h"
 
-union Register
-{
-    uint16_t word;
+union Register {
+    u16 word;
     struct
     {
-        uint8_t lsb;
-        uint8_t msb;
+        u8 lsb;
+        u8 msb;
     };
 
     // Operator overloads
-    Register& operator=(const uint16_t& value)
+    Register &operator=(const u16 &value)
     {
         word = value;
         return *this;
     }
 
-    operator uint16_t() const
+    operator u16() const
     {
         return word;
     }
@@ -29,7 +28,7 @@ public:
     Register af, bc, de, hl;
 
     // SP and PC can be regular u16 because MSB and LSB wont be accessed directly
-    uint16_t sp, pc; 
+    u16 sp, pc;
 
     Registers();
 
@@ -44,15 +43,15 @@ public:
     void set_half_carry_flag(bool);
     void set_carry_flag(bool);
 
-    static bool addition_carry(uint8_t, uint8_t);
-    static bool subtraction_carry(uint8_t, uint8_t);
-    static bool addition_half_carry(uint8_t, uint8_t);
-    static bool subtraction_half_carry(uint8_t, uint8_t);
+    static bool addition_carry(u8, u8);
+    static bool subtraction_carry(u8, u8);
+    static bool addition_half_carry(u8, u8);
+    static bool subtraction_half_carry(u8, u8);
 
-    static bool addition_carry(uint16_t, uint16_t);
-    static bool subtraction_carry(uint16_t, uint16_t);
-    static bool addition_half_carry(uint16_t, uint16_t);
-    static bool subtraction_half_carry(uint16_t, uint16_t);
+    static bool addition_carry(u16, u16);
+    static bool subtraction_carry(u16, u16);
+    static bool addition_half_carry(u16, u16);
+    static bool subtraction_half_carry(u16, u16);
 
     // Debug functions
     void print_registers();

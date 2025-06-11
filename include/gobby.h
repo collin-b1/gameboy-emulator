@@ -24,8 +24,8 @@ private:
 
     Cart cart;
     CPU cpu;
-    MMU mmu;
     PPU ppu;
+    MMU mmu;
     Renderer renderer;
     Timer timer;
     InterruptManager interrupts;

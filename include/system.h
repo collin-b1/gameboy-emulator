@@ -1,16 +1,18 @@
 #pragma once
 
-#include <cstdint>
+#include "definitions.h"
 
 class ITickableSystem
 {
 public:
     virtual ~ITickableSystem() = default;
 
-    virtual void tick(uint16_t) = 0;
-    [[nodiscard]] uint64_t get_cycles() const {
+    virtual void tick(u16) = 0;
+    [[nodiscard]] u64 get_cycles() const
+    {
         return this->_cycles;
     }
+
 private:
-    uint64_t _cycles{};
+    u64 _cycles{};
 };

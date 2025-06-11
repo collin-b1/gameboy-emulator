@@ -1,11 +1,11 @@
 #include "cpu.h"
-#include <iostream>
 #include <array>
 #include <format>
+#include <iostream>
 
 // Unprefixed
-constexpr std::array<uint8_t, 256> timings_u{
-//  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+constexpr std::array<u8, 256> timings_u{
+    //  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
     1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1, // 0x00
     1, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1, // 0x10
     2, 3, 2, 2, 1, 1, 2, 1, 2, 2, 2, 2, 1, 1, 2, 1, // 0x20
@@ -25,8 +25,8 @@ constexpr std::array<uint8_t, 256> timings_u{
 };
 
 // 0xCB Prefixed
-constexpr std::array<uint8_t, 256> timings_cb{
-//  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+constexpr std::array<u8, 256> timings_cb{
+    //  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0x00
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0x10
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0x20
@@ -45,15 +45,10 @@ constexpr std::array<uint8_t, 256> timings_cb{
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0xF0
 };
 
-CPU::CPU(MMU& mmu, InterruptManager& imu)
-    : registers()
-    , opcode(0)
-    , mmu(mmu)
-    , imu(imu)
-    , ime_scheduler(false)
-    , is_halted(false)
-    , is_stopped(false)
-{}
+CPU::CPU(MMU &mmu, InterruptManager &imu)
+    : registers(), opcode(0), mmu(mmu), imu(imu), ime_scheduler(false), is_halted(false), is_stopped(false)
+{
+}
 
 // Set registers to post-bootrom values
 void CPU::init_post_boot()
@@ -66,8 +61,13 @@ void CPU::init_post_boot()
     registers.pc = 0x0100;
 }
 
-uint8_t CPU::next_instruction()
+u8 CPU::next_instruction()
 {
+    if (registers.pc == 0x2817)
+    {
+        std::cout << "Breakpoint reached." << std::endl;
+    }
+
     auto iflag = imu.get_interrupt_flag();
     auto ie = imu.get_interrupt_enable();
     auto ime = imu.get_ime();
@@ -105,7 +105,7 @@ uint8_t CPU::next_instruction()
     auto opcode = mmu.bus_read(registers.pc++);
     auto cycles = execute_opcode(opcode);
 
-    //debug_print();
+    // debug_print();
 
     return cycles;
 }
@@ -116,7 +116,8 @@ void CPU::handle_interrupts()
     const auto ie = imu.get_interrupt_enable();
     const auto ime = imu.get_ime();
 
-    if (!ime) return;
+    if (!ime)
+        return;
 
     if (iflag & ie & 0x1)
     {
@@ -163,293 +164,777 @@ void CPU::debug_print() const
 std::string CPU::get_state() const
 {
     return std::format("AF:{:04X} BC:{:04X} DE:{:04X} HL:{:04X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}",
-        registers.af.word,
-        registers.bc.word,
-        registers.de.word,
-        registers.hl.word,
-        registers.sp,
-        registers.pc,
-        mmu.bus_read(registers.pc),
-        mmu.bus_read(registers.pc + 1),
-        mmu.bus_read(registers.pc + 2),
-        mmu.bus_read(registers.pc + 3)
-    );
+                       registers.af.word, registers.bc.word, registers.de.word, registers.hl.word, registers.sp,
+                       registers.pc, mmu.bus_read(registers.pc), mmu.bus_read(registers.pc + 1),
+                       mmu.bus_read(registers.pc + 2), mmu.bus_read(registers.pc + 3));
 }
 
-uint8_t CPU::execute_opcode(uint8_t opcode)
+u8 CPU::execute_opcode(u8 opcode)
 {
-    uint8_t cycles = timings_u[opcode];
+    u8 cycles = timings_u[opcode];
     // TODO: Generalize rows to blocks of 8 to make less redundant.
     switch (opcode)
     {
-    case 0x00: NOP(); break;
-    case 0x01: LD_r16_imm16(registers.bc.word); break;
-    case 0x02: LD_r16mem_A(registers.bc.word); break;
-    case 0x03: INC_r16(registers.bc.word); break;
-    case 0x04: INC_r8(registers.bc.msb); break;
-    case 0x05: DEC_r8(registers.bc.msb); break;
-    case 0x06: LD_r8_imm8(registers.bc.msb); break;
-    case 0x07: RLCA(); break;
-    case 0x08: LD_imm16_SP(); break;
-    case 0x09: ADD_HL_r16(registers.bc.word); break;
-    case 0x0A: LD_A_r16mem(registers.bc.word); break;
-    case 0x0B: DEC_r16(registers.bc.word); break;
-    case 0x0C: INC_r8(registers.bc.lsb); break;
-    case 0x0D: DEC_r8(registers.bc.lsb); break;
-    case 0x0E: LD_r8_imm8(registers.bc.lsb); break;
-    case 0x0F: RRCA(); break;
-    case 0x10: STOP(); break;
-    case 0x11: LD_r16_imm16(registers.de.word); break;
-    case 0x12: LD_r16mem_A(registers.de.word); break;
-    case 0x13: INC_r16(registers.de.word); break;
-    case 0x14: INC_r8(registers.de.msb); break;
-    case 0x15: DEC_r8(registers.de.msb); break;
-    case 0x16: LD_r8_imm8(registers.de.msb); break;
-    case 0x17: RLA(); break;
-    case 0x18: JR_imm8(); break;
-    case 0x19: ADD_HL_r16(registers.de.word); break;
-    case 0x1A: LD_A_r16mem(registers.de.word); break;
-    case 0x1B: DEC_r16(registers.de.word); break;
-    case 0x1C: INC_r8(registers.de.lsb); break;
-    case 0x1D: DEC_r8(registers.de.lsb); break;
-    case 0x1E: LD_r8_imm8(registers.de.lsb); break;
-    case 0x1F: RRA(); break;
-    case 0x20: JR_cc_imm8(!registers.get_zero_flag()); break;
-    case 0x21: LD_r16_imm16(registers.hl.word); break;
-    case 0x22: LD_r16mem_A(registers.hl.word); INC_r16(registers.hl.word); break;
-    case 0x23: INC_r16(registers.hl.word); break;
-    case 0x24: INC_r8(registers.hl.msb); break;
-    case 0x25: DEC_r8(registers.hl.msb); break;
-    case 0x26: LD_r8_imm8(registers.hl.msb); break;
-    case 0x27: DAA(); break;
-    case 0x28: JR_cc_imm8(registers.get_zero_flag()); break;
-    case 0x29: ADD_HL_r16(registers.hl.word); break;
-    case 0x2A: LD_A_r16mem(registers.hl.word); INC_r16(registers.hl.word); break;
-    case 0x2B: DEC_r16(registers.hl.word); break;
-    case 0x2C: INC_r8(registers.hl.lsb); break;
-    case 0x2D: DEC_r8(registers.hl.lsb); break;
-    case 0x2E: LD_r8_imm8(registers.hl.lsb); break;
-    case 0x2F: CPL(); break;
-    case 0x30: JR_cc_imm8(!registers.get_carry_flag()); break;
-    case 0x31: LD_r16_imm16(registers.sp); break;
-    case 0x32: LD_r16mem_A(registers.hl.word); DEC_r16(registers.hl.word); break;
-    case 0x33: INC_r16(registers.sp); break;
-    case 0x34: INC_r16mem(registers.hl.word); break;
-    case 0x35: DEC_r16mem(registers.hl.word); break;
-    case 0x36: LD_r16mem_imm8(registers.hl.word); break;
-    case 0x37: SCF(); break;
-    case 0x38: JR_cc_imm8(registers.get_carry_flag()); break;
-    case 0x39: ADD_HL_r16(registers.sp); break;
-    case 0x3A: LD_A_r16mem(registers.hl.word); DEC_r16(registers.hl.word); break;
-    case 0x3B: DEC_r16(registers.sp); break;
-    case 0x3C: INC_r8(registers.af.msb); break;
-    case 0x3D: DEC_r8(registers.af.msb); break;
-    case 0x3E: LD_r8_imm8(registers.af.msb); break;
-    case 0x3F: CCF(); break;
+    case 0x00:
+        NOP();
+        break;
+    case 0x01:
+        LD_r16_imm16(registers.bc.word);
+        break;
+    case 0x02:
+        LD_r16mem_A(registers.bc.word);
+        break;
+    case 0x03:
+        INC_r16(registers.bc.word);
+        break;
+    case 0x04:
+        INC_r8(registers.bc.msb);
+        break;
+    case 0x05:
+        DEC_r8(registers.bc.msb);
+        break;
+    case 0x06:
+        LD_r8_imm8(registers.bc.msb);
+        break;
+    case 0x07:
+        RLCA();
+        break;
+    case 0x08:
+        LD_imm16_SP();
+        break;
+    case 0x09:
+        ADD_HL_r16(registers.bc.word);
+        break;
+    case 0x0A:
+        LD_A_r16mem(registers.bc.word);
+        break;
+    case 0x0B:
+        DEC_r16(registers.bc.word);
+        break;
+    case 0x0C:
+        INC_r8(registers.bc.lsb);
+        break;
+    case 0x0D:
+        DEC_r8(registers.bc.lsb);
+        break;
+    case 0x0E:
+        LD_r8_imm8(registers.bc.lsb);
+        break;
+    case 0x0F:
+        RRCA();
+        break;
+    case 0x10:
+        STOP();
+        break;
+    case 0x11:
+        LD_r16_imm16(registers.de.word);
+        break;
+    case 0x12:
+        LD_r16mem_A(registers.de.word);
+        break;
+    case 0x13:
+        INC_r16(registers.de.word);
+        break;
+    case 0x14:
+        INC_r8(registers.de.msb);
+        break;
+    case 0x15:
+        DEC_r8(registers.de.msb);
+        break;
+    case 0x16:
+        LD_r8_imm8(registers.de.msb);
+        break;
+    case 0x17:
+        RLA();
+        break;
+    case 0x18:
+        JR_imm8();
+        break;
+    case 0x19:
+        ADD_HL_r16(registers.de.word);
+        break;
+    case 0x1A:
+        LD_A_r16mem(registers.de.word);
+        break;
+    case 0x1B:
+        DEC_r16(registers.de.word);
+        break;
+    case 0x1C:
+        INC_r8(registers.de.lsb);
+        break;
+    case 0x1D:
+        DEC_r8(registers.de.lsb);
+        break;
+    case 0x1E:
+        LD_r8_imm8(registers.de.lsb);
+        break;
+    case 0x1F:
+        RRA();
+        break;
+    case 0x20:
+        JR_cc_imm8(!registers.get_zero_flag());
+        break;
+    case 0x21:
+        LD_r16_imm16(registers.hl.word);
+        break;
+    case 0x22:
+        LD_r16mem_A(registers.hl.word);
+        INC_r16(registers.hl.word);
+        break;
+    case 0x23:
+        INC_r16(registers.hl.word);
+        break;
+    case 0x24:
+        INC_r8(registers.hl.msb);
+        break;
+    case 0x25:
+        DEC_r8(registers.hl.msb);
+        break;
+    case 0x26:
+        LD_r8_imm8(registers.hl.msb);
+        break;
+    case 0x27:
+        DAA();
+        break;
+    case 0x28:
+        JR_cc_imm8(registers.get_zero_flag());
+        break;
+    case 0x29:
+        ADD_HL_r16(registers.hl.word);
+        break;
+    case 0x2A:
+        LD_A_r16mem(registers.hl.word);
+        INC_r16(registers.hl.word);
+        break;
+    case 0x2B:
+        DEC_r16(registers.hl.word);
+        break;
+    case 0x2C:
+        INC_r8(registers.hl.lsb);
+        break;
+    case 0x2D:
+        DEC_r8(registers.hl.lsb);
+        break;
+    case 0x2E:
+        LD_r8_imm8(registers.hl.lsb);
+        break;
+    case 0x2F:
+        CPL();
+        break;
+    case 0x30:
+        JR_cc_imm8(!registers.get_carry_flag());
+        break;
+    case 0x31:
+        LD_r16_imm16(registers.sp);
+        break;
+    case 0x32:
+        LD_r16mem_A(registers.hl.word);
+        DEC_r16(registers.hl.word);
+        break;
+    case 0x33:
+        INC_r16(registers.sp);
+        break;
+    case 0x34:
+        INC_r16mem(registers.hl.word);
+        break;
+    case 0x35:
+        DEC_r16mem(registers.hl.word);
+        break;
+    case 0x36:
+        LD_r16mem_imm8(registers.hl.word);
+        break;
+    case 0x37:
+        SCF();
+        break;
+    case 0x38:
+        JR_cc_imm8(registers.get_carry_flag());
+        break;
+    case 0x39:
+        ADD_HL_r16(registers.sp);
+        break;
+    case 0x3A:
+        LD_A_r16mem(registers.hl.word);
+        DEC_r16(registers.hl.word);
+        break;
+    case 0x3B:
+        DEC_r16(registers.sp);
+        break;
+    case 0x3C:
+        INC_r8(registers.af.msb);
+        break;
+    case 0x3D:
+        DEC_r8(registers.af.msb);
+        break;
+    case 0x3E:
+        LD_r8_imm8(registers.af.msb);
+        break;
+    case 0x3F:
+        CCF();
+        break;
 
-    case 0x40: LD_r8_r8(registers.bc.msb, registers.bc.msb); break;
-    case 0x41: LD_r8_r8(registers.bc.msb, registers.bc.lsb); break;
-    case 0x42: LD_r8_r8(registers.bc.msb, registers.de.msb); break;
-    case 0x43: LD_r8_r8(registers.bc.msb, registers.de.lsb); break;
-    case 0x44: LD_r8_r8(registers.bc.msb, registers.hl.msb); break;
-    case 0x45: LD_r8_r8(registers.bc.msb, registers.hl.lsb); break;
-    case 0x46: LD_r8_r16mem(registers.bc.msb, registers.hl.word); break;
-    case 0x47: LD_r8_r8(registers.bc.msb, registers.af.msb); break;
+    case 0x40:
+        LD_r8_r8(registers.bc.msb, registers.bc.msb);
+        break;
+    case 0x41:
+        LD_r8_r8(registers.bc.msb, registers.bc.lsb);
+        break;
+    case 0x42:
+        LD_r8_r8(registers.bc.msb, registers.de.msb);
+        break;
+    case 0x43:
+        LD_r8_r8(registers.bc.msb, registers.de.lsb);
+        break;
+    case 0x44:
+        LD_r8_r8(registers.bc.msb, registers.hl.msb);
+        break;
+    case 0x45:
+        LD_r8_r8(registers.bc.msb, registers.hl.lsb);
+        break;
+    case 0x46:
+        LD_r8_r16mem(registers.bc.msb, registers.hl.word);
+        break;
+    case 0x47:
+        LD_r8_r8(registers.bc.msb, registers.af.msb);
+        break;
 
-    case 0x48: LD_r8_r8(registers.bc.lsb, registers.bc.msb); break;
-    case 0x49: LD_r8_r8(registers.bc.lsb, registers.bc.lsb); break;
-    case 0x4A: LD_r8_r8(registers.bc.lsb, registers.de.msb); break;
-    case 0x4B: LD_r8_r8(registers.bc.lsb, registers.de.lsb); break;
-    case 0x4C: LD_r8_r8(registers.bc.lsb, registers.hl.msb); break;
-    case 0x4D: LD_r8_r8(registers.bc.lsb, registers.hl.lsb); break;
-    case 0x4E: LD_r8_r16mem(registers.bc.lsb, registers.hl.word); break;
-    case 0x4F: LD_r8_r8(registers.bc.lsb, registers.af.msb); break;
+    case 0x48:
+        LD_r8_r8(registers.bc.lsb, registers.bc.msb);
+        break;
+    case 0x49:
+        LD_r8_r8(registers.bc.lsb, registers.bc.lsb);
+        break;
+    case 0x4A:
+        LD_r8_r8(registers.bc.lsb, registers.de.msb);
+        break;
+    case 0x4B:
+        LD_r8_r8(registers.bc.lsb, registers.de.lsb);
+        break;
+    case 0x4C:
+        LD_r8_r8(registers.bc.lsb, registers.hl.msb);
+        break;
+    case 0x4D:
+        LD_r8_r8(registers.bc.lsb, registers.hl.lsb);
+        break;
+    case 0x4E:
+        LD_r8_r16mem(registers.bc.lsb, registers.hl.word);
+        break;
+    case 0x4F:
+        LD_r8_r8(registers.bc.lsb, registers.af.msb);
+        break;
 
-    case 0x50: LD_r8_r8(registers.de.msb, registers.bc.msb); break;
-    case 0x51: LD_r8_r8(registers.de.msb, registers.bc.lsb); break;
-    case 0x52: LD_r8_r8(registers.de.msb, registers.de.msb); break;
-    case 0x53: LD_r8_r8(registers.de.msb, registers.de.lsb); break;
-    case 0x54: LD_r8_r8(registers.de.msb, registers.hl.msb); break;
-    case 0x55: LD_r8_r8(registers.de.msb, registers.hl.lsb); break;
-    case 0x56: LD_r8_r16mem(registers.de.msb, registers.hl.word); break;
-    case 0x57: LD_r8_r8(registers.de.msb, registers.af.msb); break;
+    case 0x50:
+        LD_r8_r8(registers.de.msb, registers.bc.msb);
+        break;
+    case 0x51:
+        LD_r8_r8(registers.de.msb, registers.bc.lsb);
+        break;
+    case 0x52:
+        LD_r8_r8(registers.de.msb, registers.de.msb);
+        break;
+    case 0x53:
+        LD_r8_r8(registers.de.msb, registers.de.lsb);
+        break;
+    case 0x54:
+        LD_r8_r8(registers.de.msb, registers.hl.msb);
+        break;
+    case 0x55:
+        LD_r8_r8(registers.de.msb, registers.hl.lsb);
+        break;
+    case 0x56:
+        LD_r8_r16mem(registers.de.msb, registers.hl.word);
+        break;
+    case 0x57:
+        LD_r8_r8(registers.de.msb, registers.af.msb);
+        break;
 
-    case 0x58: LD_r8_r8(registers.de.lsb, registers.bc.msb); break;
-    case 0x59: LD_r8_r8(registers.de.lsb, registers.bc.lsb); break;
-    case 0x5A: LD_r8_r8(registers.de.lsb, registers.de.msb); break;
-    case 0x5B: LD_r8_r8(registers.de.lsb, registers.de.lsb); break;
-    case 0x5C: LD_r8_r8(registers.de.lsb, registers.hl.msb); break;
-    case 0x5D: LD_r8_r8(registers.de.lsb, registers.hl.lsb); break;
-    case 0x5E: LD_r8_r16mem(registers.de.lsb, registers.hl.word); break;
-    case 0x5F: LD_r8_r8(registers.de.lsb, registers.af.msb); break;
+    case 0x58:
+        LD_r8_r8(registers.de.lsb, registers.bc.msb);
+        break;
+    case 0x59:
+        LD_r8_r8(registers.de.lsb, registers.bc.lsb);
+        break;
+    case 0x5A:
+        LD_r8_r8(registers.de.lsb, registers.de.msb);
+        break;
+    case 0x5B:
+        LD_r8_r8(registers.de.lsb, registers.de.lsb);
+        break;
+    case 0x5C:
+        LD_r8_r8(registers.de.lsb, registers.hl.msb);
+        break;
+    case 0x5D:
+        LD_r8_r8(registers.de.lsb, registers.hl.lsb);
+        break;
+    case 0x5E:
+        LD_r8_r16mem(registers.de.lsb, registers.hl.word);
+        break;
+    case 0x5F:
+        LD_r8_r8(registers.de.lsb, registers.af.msb);
+        break;
 
-    case 0x60: LD_r8_r8(registers.hl.msb, registers.bc.msb); break;
-    case 0x61: LD_r8_r8(registers.hl.msb, registers.bc.lsb); break;
-    case 0x62: LD_r8_r8(registers.hl.msb, registers.de.msb); break;
-    case 0x63: LD_r8_r8(registers.hl.msb, registers.de.lsb); break;
-    case 0x64: LD_r8_r8(registers.hl.msb, registers.hl.msb); break;
-    case 0x65: LD_r8_r8(registers.hl.msb, registers.hl.lsb); break;
-    case 0x66: LD_r8_r16mem(registers.hl.msb, registers.hl.word); break;
-    case 0x67: LD_r8_r8(registers.hl.msb, registers.af.msb); break;
+    case 0x60:
+        LD_r8_r8(registers.hl.msb, registers.bc.msb);
+        break;
+    case 0x61:
+        LD_r8_r8(registers.hl.msb, registers.bc.lsb);
+        break;
+    case 0x62:
+        LD_r8_r8(registers.hl.msb, registers.de.msb);
+        break;
+    case 0x63:
+        LD_r8_r8(registers.hl.msb, registers.de.lsb);
+        break;
+    case 0x64:
+        LD_r8_r8(registers.hl.msb, registers.hl.msb);
+        break;
+    case 0x65:
+        LD_r8_r8(registers.hl.msb, registers.hl.lsb);
+        break;
+    case 0x66:
+        LD_r8_r16mem(registers.hl.msb, registers.hl.word);
+        break;
+    case 0x67:
+        LD_r8_r8(registers.hl.msb, registers.af.msb);
+        break;
 
-    case 0x68: LD_r8_r8(registers.hl.lsb, registers.bc.msb); break;
-    case 0x69: LD_r8_r8(registers.hl.lsb, registers.bc.lsb); break;
-    case 0x6A: LD_r8_r8(registers.hl.lsb, registers.de.msb); break;
-    case 0x6B: LD_r8_r8(registers.hl.lsb, registers.de.lsb); break;
-    case 0x6C: LD_r8_r8(registers.hl.lsb, registers.hl.msb); break;
-    case 0x6D: LD_r8_r8(registers.hl.lsb, registers.hl.lsb); break;
-    case 0x6E: LD_r8_r16mem(registers.hl.lsb, registers.hl.word); break;
-    case 0x6F: LD_r8_r8(registers.hl.lsb, registers.af.msb); break;
+    case 0x68:
+        LD_r8_r8(registers.hl.lsb, registers.bc.msb);
+        break;
+    case 0x69:
+        LD_r8_r8(registers.hl.lsb, registers.bc.lsb);
+        break;
+    case 0x6A:
+        LD_r8_r8(registers.hl.lsb, registers.de.msb);
+        break;
+    case 0x6B:
+        LD_r8_r8(registers.hl.lsb, registers.de.lsb);
+        break;
+    case 0x6C:
+        LD_r8_r8(registers.hl.lsb, registers.hl.msb);
+        break;
+    case 0x6D:
+        LD_r8_r8(registers.hl.lsb, registers.hl.lsb);
+        break;
+    case 0x6E:
+        LD_r8_r16mem(registers.hl.lsb, registers.hl.word);
+        break;
+    case 0x6F:
+        LD_r8_r8(registers.hl.lsb, registers.af.msb);
+        break;
 
-    case 0x70: LD_r16mem_r8(registers.hl.word, registers.bc.msb); break;
-    case 0x71: LD_r16mem_r8(registers.hl.word, registers.bc.lsb); break;
-    case 0x72: LD_r16mem_r8(registers.hl.word, registers.de.msb); break;
-    case 0x73: LD_r16mem_r8(registers.hl.word, registers.de.lsb); break;
-    case 0x74: LD_r16mem_r8(registers.hl.word, registers.hl.msb); break;
-    case 0x75: LD_r16mem_r8(registers.hl.word, registers.hl.lsb); break;
-    case 0x76: HALT(); break; // LD (HL), (HL) uniquely halts the CPU
-    case 0x77: LD_r16mem_r8(registers.hl.word, registers.af.msb); break;
+    case 0x70:
+        LD_r16mem_r8(registers.hl.word, registers.bc.msb);
+        break;
+    case 0x71:
+        LD_r16mem_r8(registers.hl.word, registers.bc.lsb);
+        break;
+    case 0x72:
+        LD_r16mem_r8(registers.hl.word, registers.de.msb);
+        break;
+    case 0x73:
+        LD_r16mem_r8(registers.hl.word, registers.de.lsb);
+        break;
+    case 0x74:
+        LD_r16mem_r8(registers.hl.word, registers.hl.msb);
+        break;
+    case 0x75:
+        LD_r16mem_r8(registers.hl.word, registers.hl.lsb);
+        break;
+    case 0x76:
+        HALT();
+        break; // LD (HL), (HL) uniquely halts the CPU
+    case 0x77:
+        LD_r16mem_r8(registers.hl.word, registers.af.msb);
+        break;
 
-    case 0x78: LD_r8_r8(registers.af.msb, registers.bc.msb); break;
-    case 0x79: LD_r8_r8(registers.af.msb, registers.bc.lsb); break;
-    case 0x7A: LD_r8_r8(registers.af.msb, registers.de.msb); break;
-    case 0x7B: LD_r8_r8(registers.af.msb, registers.de.lsb); break;
-    case 0x7C: LD_r8_r8(registers.af.msb, registers.hl.msb); break;
-    case 0x7D: LD_r8_r8(registers.af.msb, registers.hl.lsb); break;
-    case 0x7E: LD_r8_r16mem(registers.af.msb, registers.hl.word); break;
-    case 0x7F: LD_r8_r8(registers.af.msb, registers.af.msb); break;
+    case 0x78:
+        LD_r8_r8(registers.af.msb, registers.bc.msb);
+        break;
+    case 0x79:
+        LD_r8_r8(registers.af.msb, registers.bc.lsb);
+        break;
+    case 0x7A:
+        LD_r8_r8(registers.af.msb, registers.de.msb);
+        break;
+    case 0x7B:
+        LD_r8_r8(registers.af.msb, registers.de.lsb);
+        break;
+    case 0x7C:
+        LD_r8_r8(registers.af.msb, registers.hl.msb);
+        break;
+    case 0x7D:
+        LD_r8_r8(registers.af.msb, registers.hl.lsb);
+        break;
+    case 0x7E:
+        LD_r8_r16mem(registers.af.msb, registers.hl.word);
+        break;
+    case 0x7F:
+        LD_r8_r8(registers.af.msb, registers.af.msb);
+        break;
 
-    case 0x80: ADD_A_r8(registers.bc.msb); break;
-    case 0x81: ADD_A_r8(registers.bc.lsb); break;
-    case 0x82: ADD_A_r8(registers.de.msb); break;
-    case 0x83: ADD_A_r8(registers.de.lsb); break;
-    case 0x84: ADD_A_r8(registers.hl.msb); break;
-    case 0x85: ADD_A_r8(registers.hl.lsb); break;
-    case 0x86: ADD_A_r16mem(registers.hl.word); break;
-    case 0x87: ADD_A_r8(registers.af.msb); break;
+    case 0x80:
+        ADD_A_r8(registers.bc.msb);
+        break;
+    case 0x81:
+        ADD_A_r8(registers.bc.lsb);
+        break;
+    case 0x82:
+        ADD_A_r8(registers.de.msb);
+        break;
+    case 0x83:
+        ADD_A_r8(registers.de.lsb);
+        break;
+    case 0x84:
+        ADD_A_r8(registers.hl.msb);
+        break;
+    case 0x85:
+        ADD_A_r8(registers.hl.lsb);
+        break;
+    case 0x86:
+        ADD_A_r16mem(registers.hl.word);
+        break;
+    case 0x87:
+        ADD_A_r8(registers.af.msb);
+        break;
 
-    case 0x88: ADC_A_r8(registers.bc.msb); break;
-    case 0x89: ADC_A_r8(registers.bc.lsb); break;
-    case 0x8A: ADC_A_r8(registers.de.msb); break;
-    case 0x8B: ADC_A_r8(registers.de.lsb); break;
-    case 0x8C: ADC_A_r8(registers.hl.msb); break;
-    case 0x8D: ADC_A_r8(registers.hl.lsb); break;
-    case 0x8E: ADC_A_r16mem(registers.hl.word); break;
-    case 0x8F: ADC_A_r8(registers.af.msb); break;
+    case 0x88:
+        ADC_A_r8(registers.bc.msb);
+        break;
+    case 0x89:
+        ADC_A_r8(registers.bc.lsb);
+        break;
+    case 0x8A:
+        ADC_A_r8(registers.de.msb);
+        break;
+    case 0x8B:
+        ADC_A_r8(registers.de.lsb);
+        break;
+    case 0x8C:
+        ADC_A_r8(registers.hl.msb);
+        break;
+    case 0x8D:
+        ADC_A_r8(registers.hl.lsb);
+        break;
+    case 0x8E:
+        ADC_A_r16mem(registers.hl.word);
+        break;
+    case 0x8F:
+        ADC_A_r8(registers.af.msb);
+        break;
 
-    case 0x90: SUB_A_r8(registers.bc.msb); break;
-    case 0x91: SUB_A_r8(registers.bc.lsb); break;
-    case 0x92: SUB_A_r8(registers.de.msb); break;
-    case 0x93: SUB_A_r8(registers.de.lsb); break;
-    case 0x94: SUB_A_r8(registers.hl.msb); break;
-    case 0x95: SUB_A_r8(registers.hl.lsb); break;
-    case 0x96: SUB_A_r16mem(registers.hl.word); break;
-    case 0x97: SUB_A_r8(registers.af.msb); break;
+    case 0x90:
+        SUB_A_r8(registers.bc.msb);
+        break;
+    case 0x91:
+        SUB_A_r8(registers.bc.lsb);
+        break;
+    case 0x92:
+        SUB_A_r8(registers.de.msb);
+        break;
+    case 0x93:
+        SUB_A_r8(registers.de.lsb);
+        break;
+    case 0x94:
+        SUB_A_r8(registers.hl.msb);
+        break;
+    case 0x95:
+        SUB_A_r8(registers.hl.lsb);
+        break;
+    case 0x96:
+        SUB_A_r16mem(registers.hl.word);
+        break;
+    case 0x97:
+        SUB_A_r8(registers.af.msb);
+        break;
 
-    case 0x98: SBC_A_r8(registers.bc.msb); break;
-    case 0x99: SBC_A_r8(registers.bc.lsb); break;
-    case 0x9A: SBC_A_r8(registers.de.msb); break;
-    case 0x9B: SBC_A_r8(registers.de.lsb); break;
-    case 0x9C: SBC_A_r8(registers.hl.msb); break;
-    case 0x9D: SBC_A_r8(registers.hl.lsb); break;
-    case 0x9E: SBC_A_r16mem(registers.hl.word); break;
-    case 0x9F: SBC_A_r8(registers.af.msb); break;
+    case 0x98:
+        SBC_A_r8(registers.bc.msb);
+        break;
+    case 0x99:
+        SBC_A_r8(registers.bc.lsb);
+        break;
+    case 0x9A:
+        SBC_A_r8(registers.de.msb);
+        break;
+    case 0x9B:
+        SBC_A_r8(registers.de.lsb);
+        break;
+    case 0x9C:
+        SBC_A_r8(registers.hl.msb);
+        break;
+    case 0x9D:
+        SBC_A_r8(registers.hl.lsb);
+        break;
+    case 0x9E:
+        SBC_A_r16mem(registers.hl.word);
+        break;
+    case 0x9F:
+        SBC_A_r8(registers.af.msb);
+        break;
 
-    case 0xA0: AND_A_r8(registers.bc.msb); break;
-    case 0xA1: AND_A_r8(registers.bc.lsb); break;
-    case 0xA2: AND_A_r8(registers.de.msb); break;
-    case 0xA3: AND_A_r8(registers.de.lsb); break;
-    case 0xA4: AND_A_r8(registers.hl.msb); break;
-    case 0xA5: AND_A_r8(registers.hl.lsb); break;
-    case 0xA6: AND_A_r16mem(registers.hl.word); break;
-    case 0xA7: AND_A_r8(registers.af.msb); break;
+    case 0xA0:
+        AND_A_r8(registers.bc.msb);
+        break;
+    case 0xA1:
+        AND_A_r8(registers.bc.lsb);
+        break;
+    case 0xA2:
+        AND_A_r8(registers.de.msb);
+        break;
+    case 0xA3:
+        AND_A_r8(registers.de.lsb);
+        break;
+    case 0xA4:
+        AND_A_r8(registers.hl.msb);
+        break;
+    case 0xA5:
+        AND_A_r8(registers.hl.lsb);
+        break;
+    case 0xA6:
+        AND_A_r16mem(registers.hl.word);
+        break;
+    case 0xA7:
+        AND_A_r8(registers.af.msb);
+        break;
 
-    case 0xA8: XOR_A_r8(registers.bc.msb); break;
-    case 0xA9: XOR_A_r8(registers.bc.lsb); break;
-    case 0xAA: XOR_A_r8(registers.de.msb); break;
-    case 0xAB: XOR_A_r8(registers.de.lsb); break;
-    case 0xAC: XOR_A_r8(registers.hl.msb); break;
-    case 0xAD: XOR_A_r8(registers.hl.lsb); break;
-    case 0xAE: XOR_A_r16mem(registers.hl.word); break;
-    case 0xAF: XOR_A_r8(registers.af.msb); break;
+    case 0xA8:
+        XOR_A_r8(registers.bc.msb);
+        break;
+    case 0xA9:
+        XOR_A_r8(registers.bc.lsb);
+        break;
+    case 0xAA:
+        XOR_A_r8(registers.de.msb);
+        break;
+    case 0xAB:
+        XOR_A_r8(registers.de.lsb);
+        break;
+    case 0xAC:
+        XOR_A_r8(registers.hl.msb);
+        break;
+    case 0xAD:
+        XOR_A_r8(registers.hl.lsb);
+        break;
+    case 0xAE:
+        XOR_A_r16mem(registers.hl.word);
+        break;
+    case 0xAF:
+        XOR_A_r8(registers.af.msb);
+        break;
 
-    case 0xB0: OR_A_r8(registers.bc.msb); break;
-    case 0xB1: OR_A_r8(registers.bc.lsb); break;
-    case 0xB2: OR_A_r8(registers.de.msb); break;
-    case 0xB3: OR_A_r8(registers.de.lsb); break;
-    case 0xB4: OR_A_r8(registers.hl.msb); break;
-    case 0xB5: OR_A_r8(registers.hl.lsb); break;
-    case 0xB6: OR_A_r16mem(registers.hl.word); break;
-    case 0xB7: OR_A_r8(registers.af.msb); break;
+    case 0xB0:
+        OR_A_r8(registers.bc.msb);
+        break;
+    case 0xB1:
+        OR_A_r8(registers.bc.lsb);
+        break;
+    case 0xB2:
+        OR_A_r8(registers.de.msb);
+        break;
+    case 0xB3:
+        OR_A_r8(registers.de.lsb);
+        break;
+    case 0xB4:
+        OR_A_r8(registers.hl.msb);
+        break;
+    case 0xB5:
+        OR_A_r8(registers.hl.lsb);
+        break;
+    case 0xB6:
+        OR_A_r16mem(registers.hl.word);
+        break;
+    case 0xB7:
+        OR_A_r8(registers.af.msb);
+        break;
 
-    case 0xB8: CP_A_r8(registers.bc.msb); break;
-    case 0xB9: CP_A_r8(registers.bc.lsb); break;
-    case 0xBA: CP_A_r8(registers.de.msb); break;
-    case 0xBB: CP_A_r8(registers.de.lsb); break;
-    case 0xBC: CP_A_r8(registers.hl.msb); break;
-    case 0xBD: CP_A_r8(registers.hl.lsb); break;
-    case 0xBE: CP_A_r16mem(registers.hl.word); break;
-    case 0xBF: CP_A_r8(registers.af.msb); break;
+    case 0xB8:
+        CP_A_r8(registers.bc.msb);
+        break;
+    case 0xB9:
+        CP_A_r8(registers.bc.lsb);
+        break;
+    case 0xBA:
+        CP_A_r8(registers.de.msb);
+        break;
+    case 0xBB:
+        CP_A_r8(registers.de.lsb);
+        break;
+    case 0xBC:
+        CP_A_r8(registers.hl.msb);
+        break;
+    case 0xBD:
+        CP_A_r8(registers.hl.lsb);
+        break;
+    case 0xBE:
+        CP_A_r16mem(registers.hl.word);
+        break;
+    case 0xBF:
+        CP_A_r8(registers.af.msb);
+        break;
 
-    case 0xC0: RET_cc(!registers.get_zero_flag()); break;
-    case 0xC1: POP_r16stk(registers.bc.word); break;
-    case 0xC2: JP_cc_imm16(!registers.get_zero_flag()); break;
-    case 0xC3: JP_imm16(); break;
-    case 0xC4: CALL_cc_imm16(!registers.get_zero_flag()); break;
-    case 0xC5: PUSH_r16stk(registers.bc.word); break;
-    case 0xC6: ADD_A_imm8(); break;
-    case 0xC7: RST_tgt3(0x00); break;
+    case 0xC0:
+        RET_cc(!registers.get_zero_flag());
+        break;
+    case 0xC1:
+        POP_r16stk(registers.bc.word);
+        break;
+    case 0xC2:
+        JP_cc_imm16(!registers.get_zero_flag());
+        break;
+    case 0xC3:
+        JP_imm16();
+        break;
+    case 0xC4:
+        CALL_cc_imm16(!registers.get_zero_flag());
+        break;
+    case 0xC5:
+        PUSH_r16stk(registers.bc.word);
+        break;
+    case 0xC6:
+        ADD_A_imm8();
+        break;
+    case 0xC7:
+        RST_tgt3(0x00);
+        break;
 
-    case 0xC8: RET_cc(registers.get_zero_flag()); break;
-    case 0xC9: RET(); break;
-    case 0xCA: JP_cc_imm16(registers.get_zero_flag()); break;
-    case 0xCB:
-    {
-        uint8_t cb_opcode = mmu.bus_read(registers.pc++);
+    case 0xC8:
+        RET_cc(registers.get_zero_flag());
+        break;
+    case 0xC9:
+        RET();
+        break;
+    case 0xCA:
+        JP_cc_imm16(registers.get_zero_flag());
+        break;
+    case 0xCB: {
+        u8 cb_opcode = mmu.bus_read(registers.pc++);
         cycles += execute_cb_opcode(cb_opcode);
         break;
     }
-    case 0xCC: CALL_cc_imm16(registers.get_zero_flag()); break;
-    case 0xCD: CALL_imm16(); break;
-    case 0xCE: ADC_A_imm8(); break;
-    case 0xCF: RST_tgt3(0x08); break;
-    case 0xD0: RET_cc(!registers.get_carry_flag()); break;
-    case 0xD1: POP_r16stk(registers.de.word); break;
-    case 0xD2: JP_cc_imm16(!registers.get_carry_flag()); break;
-    case 0xD4: CALL_cc_imm16(!registers.get_carry_flag()); break;
-    case 0xD5: PUSH_r16stk(registers.de.word); break;
-    case 0xD6: SUB_A_imm8(); break;
-    case 0xD7: RST_tgt3(0x10); break;
-    case 0xD8: RET_cc(registers.get_carry_flag()); break;
-    case 0xD9: RETI(); break;
-    case 0xDA: JP_cc_imm16(registers.get_carry_flag()); break;
-    case 0xDC: CALL_cc_imm16(registers.get_carry_flag()); break;
-    case 0xDE: SBC_A_imm8(); break;
-    case 0xDF: RST_tgt3(0x18); break;
-    case 0xE0: LDH_imm8_A(); break;
-    case 0xE1: POP_r16stk(registers.hl.word); break;
-    case 0xE2: LDH_C_A(); break;
-    case 0xE5: PUSH_r16stk(registers.hl.word); break;
-    case 0xE6: AND_A_imm8(); break;
-    case 0xE7: RST_tgt3(0x20); break;
-    case 0xE8: ADD_SP_imm8(); break;
-    case 0xE9: JP_HL(); break;
-    case 0xEA: LD_imm16_A(); break;
-    case 0xEE: XOR_A_imm8(); break;
-    case 0xEF: RST_tgt3(0x28); break;
-    case 0xF0: LDH_A_imm8(); break;
-    case 0xF1: POP_r16stk(registers.af.word); registers.af.lsb &= 0xF0; break;
-    case 0xF2: LDH_A_C(); break;
-    case 0xF3: DI(); break;
-    case 0xF5: PUSH_r16stk(registers.af.word); break;
-    case 0xF6: OR_A_imm8(); break;
-    case 0xF7: RST_tgt3(0x30); break;
-    case 0xF8: LD_HL_SP_imm8(); break;
-    case 0xF9: LD_SP_HL(); break;
-    case 0xFA: LD_A_imm16(); break;
-    case 0xFB: EI(); break;
-    case 0xFE: CP_A_imm8(); break;
-    case 0xFF: RST_tgt3(0x38); break;
+    case 0xCC:
+        CALL_cc_imm16(registers.get_zero_flag());
+        break;
+    case 0xCD:
+        CALL_imm16();
+        break;
+    case 0xCE:
+        ADC_A_imm8();
+        break;
+    case 0xCF:
+        RST_tgt3(0x08);
+        break;
+    case 0xD0:
+        RET_cc(!registers.get_carry_flag());
+        break;
+    case 0xD1:
+        POP_r16stk(registers.de.word);
+        break;
+    case 0xD2:
+        JP_cc_imm16(!registers.get_carry_flag());
+        break;
+    case 0xD4:
+        CALL_cc_imm16(!registers.get_carry_flag());
+        break;
+    case 0xD5:
+        PUSH_r16stk(registers.de.word);
+        break;
+    case 0xD6:
+        SUB_A_imm8();
+        break;
+    case 0xD7:
+        RST_tgt3(0x10);
+        break;
+    case 0xD8:
+        RET_cc(registers.get_carry_flag());
+        break;
+    case 0xD9:
+        RETI();
+        break;
+    case 0xDA:
+        JP_cc_imm16(registers.get_carry_flag());
+        break;
+    case 0xDC:
+        CALL_cc_imm16(registers.get_carry_flag());
+        break;
+    case 0xDE:
+        SBC_A_imm8();
+        break;
+    case 0xDF:
+        RST_tgt3(0x18);
+        break;
+    case 0xE0:
+        LDH_imm8_A();
+        break;
+    case 0xE1:
+        POP_r16stk(registers.hl.word);
+        break;
+    case 0xE2:
+        LDH_C_A();
+        break;
+    case 0xE5:
+        PUSH_r16stk(registers.hl.word);
+        break;
+    case 0xE6:
+        AND_A_imm8();
+        break;
+    case 0xE7:
+        RST_tgt3(0x20);
+        break;
+    case 0xE8:
+        ADD_SP_imm8();
+        break;
+    case 0xE9:
+        JP_HL();
+        break;
+    case 0xEA:
+        LD_imm16_A();
+        break;
+    case 0xEE:
+        XOR_A_imm8();
+        break;
+    case 0xEF:
+        RST_tgt3(0x28);
+        break;
+    case 0xF0:
+        LDH_A_imm8();
+        break;
+    case 0xF1:
+        POP_r16stk(registers.af.word);
+        registers.af.lsb &= 0xF0;
+        break;
+    case 0xF2:
+        LDH_A_C();
+        break;
+    case 0xF3:
+        DI();
+        break;
+    case 0xF5:
+        PUSH_r16stk(registers.af.word);
+        break;
+    case 0xF6:
+        OR_A_imm8();
+        break;
+    case 0xF7:
+        RST_tgt3(0x30);
+        break;
+    case 0xF8:
+        LD_HL_SP_imm8();
+        break;
+    case 0xF9:
+        LD_SP_HL();
+        break;
+    case 0xFA:
+        LD_A_imm16();
+        break;
+    case 0xFB:
+        EI();
+        break;
+    case 0xFE:
+        CP_A_imm8();
+        break;
+    case 0xFF:
+        RST_tgt3(0x38);
+        break;
     default:
         std::cout << "Illegal opcode: " << std::hex << (int)opcode << std::endl;
         exit(1);
@@ -458,128 +943,306 @@ uint8_t CPU::execute_opcode(uint8_t opcode)
     return cycles;
 }
 
-uint8_t CPU::execute_cb_opcode(uint8_t cb_opcode)
+u8 CPU::execute_cb_opcode(u8 cb_opcode)
 {
     switch (cb_opcode)
     {
-    case 0x00: RLC_r8(registers.bc.msb); break;
-    case 0x01: RLC_r8(registers.bc.lsb); break;
-    case 0x02: RLC_r8(registers.de.msb); break;
-    case 0x03: RLC_r8(registers.de.lsb); break;
-    case 0x04: RLC_r8(registers.hl.msb); break;
-    case 0x05: RLC_r8(registers.hl.lsb); break;
-    case 0x06: RLC_r16mem(registers.hl.word); break;
-    case 0x07: RLC_r8(registers.af.msb); break;
+    case 0x00:
+        RLC_r8(registers.bc.msb);
+        break;
+    case 0x01:
+        RLC_r8(registers.bc.lsb);
+        break;
+    case 0x02:
+        RLC_r8(registers.de.msb);
+        break;
+    case 0x03:
+        RLC_r8(registers.de.lsb);
+        break;
+    case 0x04:
+        RLC_r8(registers.hl.msb);
+        break;
+    case 0x05:
+        RLC_r8(registers.hl.lsb);
+        break;
+    case 0x06:
+        RLC_r16mem(registers.hl.word);
+        break;
+    case 0x07:
+        RLC_r8(registers.af.msb);
+        break;
 
-    case 0x08: RRC_r8(registers.bc.msb); break;
-    case 0x09: RRC_r8(registers.bc.lsb); break;
-    case 0x0A: RRC_r8(registers.de.msb); break;
-    case 0x0B: RRC_r8(registers.de.lsb); break;
-    case 0x0C: RRC_r8(registers.hl.msb); break;
-    case 0x0D: RRC_r8(registers.hl.lsb); break;
-    case 0x0E: RRC_r16mem(registers.hl.word); break;
-    case 0x0F: RRC_r8(registers.af.msb); break;
+    case 0x08:
+        RRC_r8(registers.bc.msb);
+        break;
+    case 0x09:
+        RRC_r8(registers.bc.lsb);
+        break;
+    case 0x0A:
+        RRC_r8(registers.de.msb);
+        break;
+    case 0x0B:
+        RRC_r8(registers.de.lsb);
+        break;
+    case 0x0C:
+        RRC_r8(registers.hl.msb);
+        break;
+    case 0x0D:
+        RRC_r8(registers.hl.lsb);
+        break;
+    case 0x0E:
+        RRC_r16mem(registers.hl.word);
+        break;
+    case 0x0F:
+        RRC_r8(registers.af.msb);
+        break;
 
-    case 0x10: RL_r8(registers.bc.msb); break;
-    case 0x11: RL_r8(registers.bc.lsb); break;
-    case 0x12: RL_r8(registers.de.msb); break;
-    case 0x13: RL_r8(registers.de.lsb); break;
-    case 0x14: RL_r8(registers.hl.msb); break;
-    case 0x15: RL_r8(registers.hl.lsb); break;
-    case 0x16: RL_r16mem(registers.hl.word); break;
-    case 0x17: RL_r8(registers.af.msb); break;
+    case 0x10:
+        RL_r8(registers.bc.msb);
+        break;
+    case 0x11:
+        RL_r8(registers.bc.lsb);
+        break;
+    case 0x12:
+        RL_r8(registers.de.msb);
+        break;
+    case 0x13:
+        RL_r8(registers.de.lsb);
+        break;
+    case 0x14:
+        RL_r8(registers.hl.msb);
+        break;
+    case 0x15:
+        RL_r8(registers.hl.lsb);
+        break;
+    case 0x16:
+        RL_r16mem(registers.hl.word);
+        break;
+    case 0x17:
+        RL_r8(registers.af.msb);
+        break;
 
-    case 0x18: RR_r8(registers.bc.msb); break;
-    case 0x19: RR_r8(registers.bc.lsb); break;
-    case 0x1A: RR_r8(registers.de.msb); break;
-    case 0x1B: RR_r8(registers.de.lsb); break;
-    case 0x1C: RR_r8(registers.hl.msb); break;
-    case 0x1D: RR_r8(registers.hl.lsb); break;
-    case 0x1E: RR_r16mem(registers.hl.word); break;
-    case 0x1F: RR_r8(registers.af.msb); break;
+    case 0x18:
+        RR_r8(registers.bc.msb);
+        break;
+    case 0x19:
+        RR_r8(registers.bc.lsb);
+        break;
+    case 0x1A:
+        RR_r8(registers.de.msb);
+        break;
+    case 0x1B:
+        RR_r8(registers.de.lsb);
+        break;
+    case 0x1C:
+        RR_r8(registers.hl.msb);
+        break;
+    case 0x1D:
+        RR_r8(registers.hl.lsb);
+        break;
+    case 0x1E:
+        RR_r16mem(registers.hl.word);
+        break;
+    case 0x1F:
+        RR_r8(registers.af.msb);
+        break;
 
-    case 0x20: SLA_r8(registers.bc.msb); break;
-    case 0x21: SLA_r8(registers.bc.lsb); break;
-    case 0x22: SLA_r8(registers.de.msb); break;
-    case 0x23: SLA_r8(registers.de.lsb); break;
-    case 0x24: SLA_r8(registers.hl.msb); break;
-    case 0x25: SLA_r8(registers.hl.lsb); break;
-    case 0x26: SLA_r16mem(registers.hl.word); break;
-    case 0x27: SLA_r8(registers.af.msb); break;
+    case 0x20:
+        SLA_r8(registers.bc.msb);
+        break;
+    case 0x21:
+        SLA_r8(registers.bc.lsb);
+        break;
+    case 0x22:
+        SLA_r8(registers.de.msb);
+        break;
+    case 0x23:
+        SLA_r8(registers.de.lsb);
+        break;
+    case 0x24:
+        SLA_r8(registers.hl.msb);
+        break;
+    case 0x25:
+        SLA_r8(registers.hl.lsb);
+        break;
+    case 0x26:
+        SLA_r16mem(registers.hl.word);
+        break;
+    case 0x27:
+        SLA_r8(registers.af.msb);
+        break;
 
-    case 0x28: SRA_r8(registers.bc.msb); break;
-    case 0x29: SRA_r8(registers.bc.lsb); break;
-    case 0x2A: SRA_r8(registers.de.msb); break;
-    case 0x2B: SRA_r8(registers.de.lsb); break;
-    case 0x2C: SRA_r8(registers.hl.msb); break;
-    case 0x2D: SRA_r8(registers.hl.lsb); break;
-    case 0x2E: SRA_r16mem(registers.hl.word); break;
-    case 0x2F: SRA_r8(registers.af.msb); break;
+    case 0x28:
+        SRA_r8(registers.bc.msb);
+        break;
+    case 0x29:
+        SRA_r8(registers.bc.lsb);
+        break;
+    case 0x2A:
+        SRA_r8(registers.de.msb);
+        break;
+    case 0x2B:
+        SRA_r8(registers.de.lsb);
+        break;
+    case 0x2C:
+        SRA_r8(registers.hl.msb);
+        break;
+    case 0x2D:
+        SRA_r8(registers.hl.lsb);
+        break;
+    case 0x2E:
+        SRA_r16mem(registers.hl.word);
+        break;
+    case 0x2F:
+        SRA_r8(registers.af.msb);
+        break;
 
-    case 0x30: SWAP_r8(registers.bc.msb); break;
-    case 0x31: SWAP_r8(registers.bc.lsb); break;
-    case 0x32: SWAP_r8(registers.de.msb); break;
-    case 0x33: SWAP_r8(registers.de.lsb); break;
-    case 0x34: SWAP_r8(registers.hl.msb); break;
-    case 0x35: SWAP_r8(registers.hl.lsb); break;
-    case 0x36: SWAP_r16mem(registers.hl.word); break;
-    case 0x37: SWAP_r8(registers.af.msb); break;
+    case 0x30:
+        SWAP_r8(registers.bc.msb);
+        break;
+    case 0x31:
+        SWAP_r8(registers.bc.lsb);
+        break;
+    case 0x32:
+        SWAP_r8(registers.de.msb);
+        break;
+    case 0x33:
+        SWAP_r8(registers.de.lsb);
+        break;
+    case 0x34:
+        SWAP_r8(registers.hl.msb);
+        break;
+    case 0x35:
+        SWAP_r8(registers.hl.lsb);
+        break;
+    case 0x36:
+        SWAP_r16mem(registers.hl.word);
+        break;
+    case 0x37:
+        SWAP_r8(registers.af.msb);
+        break;
 
-    case 0x38: SRL_r8(registers.bc.msb); break;
-    case 0x39: SRL_r8(registers.bc.lsb); break;
-    case 0x3A: SRL_r8(registers.de.msb); break;
-    case 0x3B: SRL_r8(registers.de.lsb); break;
-    case 0x3C: SRL_r8(registers.hl.msb); break;
-    case 0x3D: SRL_r8(registers.hl.lsb); break;
-    case 0x3E: SRL_r16mem(registers.hl.word); break;
-    case 0x3F: SRL_r8(registers.af.msb); break;
+    case 0x38:
+        SRL_r8(registers.bc.msb);
+        break;
+    case 0x39:
+        SRL_r8(registers.bc.lsb);
+        break;
+    case 0x3A:
+        SRL_r8(registers.de.msb);
+        break;
+    case 0x3B:
+        SRL_r8(registers.de.lsb);
+        break;
+    case 0x3C:
+        SRL_r8(registers.hl.msb);
+        break;
+    case 0x3D:
+        SRL_r8(registers.hl.lsb);
+        break;
+    case 0x3E:
+        SRL_r16mem(registers.hl.word);
+        break;
+    case 0x3F:
+        SRL_r8(registers.af.msb);
+        break;
 
-    default:
-    {
-        const uint8_t bit = (cb_opcode & 0b00111000) >> 3;
+    default: {
+        const u8 bit = (cb_opcode & 0b00111000) >> 3;
         if (cb_opcode >= 0x40 && cb_opcode <= 0x7F)
         {
             switch (cb_opcode % 0x08)
             {
-                case 0x00: BIT_b3_r8(bit, registers.bc.msb); break;
-                case 0x01: BIT_b3_r8(bit, registers.bc.lsb); break;
-                case 0x02: BIT_b3_r8(bit, registers.de.msb); break;
-                case 0x03: BIT_b3_r8(bit, registers.de.lsb); break;
-                case 0x04: BIT_b3_r8(bit, registers.hl.msb); break;
-                case 0x05: BIT_b3_r8(bit, registers.hl.lsb); break;
-                case 0x06: BIT_b3_r16mem(bit, registers.hl.word); break;
-                case 0x07: BIT_b3_r8(bit, registers.af.msb); break;
-                default: exit(7);
+            case 0x00:
+                BIT_b3_r8(bit, registers.bc.msb);
+                break;
+            case 0x01:
+                BIT_b3_r8(bit, registers.bc.lsb);
+                break;
+            case 0x02:
+                BIT_b3_r8(bit, registers.de.msb);
+                break;
+            case 0x03:
+                BIT_b3_r8(bit, registers.de.lsb);
+                break;
+            case 0x04:
+                BIT_b3_r8(bit, registers.hl.msb);
+                break;
+            case 0x05:
+                BIT_b3_r8(bit, registers.hl.lsb);
+                break;
+            case 0x06:
+                BIT_b3_r16mem(bit, registers.hl.word);
+                break;
+            case 0x07:
+                BIT_b3_r8(bit, registers.af.msb);
+                break;
+            default:
+                exit(7);
             }
         }
         else if (cb_opcode >= 0x80 && cb_opcode <= 0xBF)
         {
             switch (cb_opcode % 0x08)
             {
-            case 0x00: RES_b3_r8(bit, registers.bc.msb); break;
-            case 0x01: RES_b3_r8(bit, registers.bc.lsb); break;
-            case 0x02: RES_b3_r8(bit, registers.de.msb); break;
-            case 0x03: RES_b3_r8(bit, registers.de.lsb); break;
-            case 0x04: RES_b3_r8(bit, registers.hl.msb); break;
-            case 0x05: RES_b3_r8(bit, registers.hl.lsb); break;
-            case 0x06: RES_b3_r16mem(bit, registers.hl.word); break;
-            case 0x07: RES_b3_r8(bit, registers.af.msb); break;
-            default: exit(7);
+            case 0x00:
+                RES_b3_r8(bit, registers.bc.msb);
+                break;
+            case 0x01:
+                RES_b3_r8(bit, registers.bc.lsb);
+                break;
+            case 0x02:
+                RES_b3_r8(bit, registers.de.msb);
+                break;
+            case 0x03:
+                RES_b3_r8(bit, registers.de.lsb);
+                break;
+            case 0x04:
+                RES_b3_r8(bit, registers.hl.msb);
+                break;
+            case 0x05:
+                RES_b3_r8(bit, registers.hl.lsb);
+                break;
+            case 0x06:
+                RES_b3_r16mem(bit, registers.hl.word);
+                break;
+            case 0x07:
+                RES_b3_r8(bit, registers.af.msb);
+                break;
+            default:
+                exit(7);
             }
         }
         else if (cb_opcode >= 0xC0 && cb_opcode <= 0xFF)
         {
             switch (cb_opcode % 0x08)
             {
-            case 0x00: SET_b3_r8(bit, registers.bc.msb); break;
-            case 0x01: SET_b3_r8(bit, registers.bc.lsb); break;
-            case 0x02: SET_b3_r8(bit, registers.de.msb); break;
-            case 0x03: SET_b3_r8(bit, registers.de.lsb); break;
-            case 0x04: SET_b3_r8(bit, registers.hl.msb); break;
-            case 0x05: SET_b3_r8(bit, registers.hl.lsb); break;
-            case 0x06: SET_b3_r16mem(bit, registers.hl.word); break;
-            case 0x07: SET_b3_r8(bit, registers.af.msb); break;
-            default: exit(7);
+            case 0x00:
+                SET_b3_r8(bit, registers.bc.msb);
+                break;
+            case 0x01:
+                SET_b3_r8(bit, registers.bc.lsb);
+                break;
+            case 0x02:
+                SET_b3_r8(bit, registers.de.msb);
+                break;
+            case 0x03:
+                SET_b3_r8(bit, registers.de.lsb);
+                break;
+            case 0x04:
+                SET_b3_r8(bit, registers.hl.msb);
+                break;
+            case 0x05:
+                SET_b3_r8(bit, registers.hl.lsb);
+                break;
+            case 0x06:
+                SET_b3_r16mem(bit, registers.hl.word);
+                break;
+            case 0x07:
+                SET_b3_r8(bit, registers.af.msb);
+                break;
+            default:
+                exit(7);
             }
         }
         else
@@ -593,12 +1256,13 @@ uint8_t CPU::execute_cb_opcode(uint8_t cb_opcode)
 }
 
 void CPU::NOP()
-{}
+{
+}
 
 // CALL imm16
 void CPU::CALL_imm16()
 {
-    uint16_t imm16 = mmu.bus_read_word(registers.pc);
+    u16 imm16 = mmu.bus_read_word(registers.pc);
     registers.pc += 2;
 
     PUSH_r16stk(registers.pc);
@@ -608,7 +1272,7 @@ void CPU::CALL_imm16()
 // CALL cc, imm16
 void CPU::CALL_cc_imm16(bool condition_met)
 {
-    uint16_t imm16 = mmu.bus_read_word(registers.pc);
+    u16 imm16 = mmu.bus_read_word(registers.pc);
     registers.pc += 2;
 
     if (condition_met)
@@ -641,7 +1305,7 @@ void CPU::RETI()
 
 void CPU::JP_cc_imm16(bool condition_met)
 {
-    uint16_t nn = mmu.bus_read_word(registers.pc);
+    u16 nn = mmu.bus_read_word(registers.pc);
     registers.pc += 2;
 
     if (condition_met)
@@ -650,7 +1314,7 @@ void CPU::JP_cc_imm16(bool condition_met)
     }
 }
 
-void CPU::RST_tgt3(uint8_t tgt3)
+void CPU::RST_tgt3(u8 tgt3)
 {
     PUSH_r16stk(registers.pc);
     registers.pc = tgt3;
@@ -664,7 +1328,7 @@ void CPU::HALT()
     {
         if (!imu.get_ime())
         {
-            //halt_bug = 1;
+            // halt_bug = 1;
         }
     }
     else // ie & if & 0x1F == 0
@@ -673,9 +1337,9 @@ void CPU::HALT()
     }
 }
 
-void CPU::ADD_A_r8(uint8_t& r8)
+void CPU::ADD_A_r8(u8 &r8)
 {
-    uint8_t result = registers.af.msb + r8;
+    u8 result = registers.af.msb + r8;
 
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
@@ -685,23 +1349,21 @@ void CPU::ADD_A_r8(uint8_t& r8)
     registers.af.msb = result;
 }
 
-void CPU::ADC_A_r8(uint8_t& r8)
+void CPU::ADC_A_r8(u8 &r8)
 {
-    uint8_t carry = registers.get_carry_flag();
-    uint8_t result = registers.af.msb + r8 + carry;
+    u8 carry = registers.get_carry_flag();
+    u8 result = registers.af.msb + r8 + carry;
 
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
 
-    bool has_half_carry =
-        Registers::addition_half_carry(registers.af.msb, r8) ||
-        Registers::addition_half_carry(registers.af.msb, carry) ||
-        Registers::addition_half_carry(registers.af.msb + carry, r8);
+    bool has_half_carry = Registers::addition_half_carry(registers.af.msb, r8) ||
+                          Registers::addition_half_carry(registers.af.msb, carry) ||
+                          Registers::addition_half_carry(registers.af.msb + carry, r8);
 
-    bool has_carry =
-        Registers::addition_carry(registers.af.msb, r8) ||
-        Registers::addition_carry(registers.af.msb, carry) ||
-        Registers::addition_carry(registers.af.msb + carry, r8);
+    bool has_carry = Registers::addition_carry(registers.af.msb, r8) ||
+                     Registers::addition_carry(registers.af.msb, carry) ||
+                     Registers::addition_carry(registers.af.msb + carry, r8);
 
     registers.set_half_carry_flag(has_half_carry);
     registers.set_carry_flag(has_carry);
@@ -709,9 +1371,9 @@ void CPU::ADC_A_r8(uint8_t& r8)
     registers.af.msb = result;
 }
 
-void CPU::SUB_A_r8(uint8_t& r8)
+void CPU::SUB_A_r8(u8 &r8)
 {
-    uint8_t result = registers.af.msb - r8;
+    u8 result = registers.af.msb - r8;
 
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(1);
@@ -721,20 +1383,18 @@ void CPU::SUB_A_r8(uint8_t& r8)
     registers.af.msb = result;
 }
 
-void CPU::SBC_A_r8(uint8_t& r8)
+void CPU::SBC_A_r8(u8 &r8)
 {
-    uint8_t carry = registers.get_carry_flag();
-    uint8_t result = registers.af.msb - r8 - carry;
+    u8 carry = registers.get_carry_flag();
+    u8 result = registers.af.msb - r8 - carry;
 
-    bool has_half_carry =
-        Registers::subtraction_half_carry(registers.af.msb, r8) ||
-        Registers::subtraction_half_carry(registers.af.msb, carry) ||
-        Registers::subtraction_half_carry(registers.af.msb - carry, r8);
+    bool has_half_carry = Registers::subtraction_half_carry(registers.af.msb, r8) ||
+                          Registers::subtraction_half_carry(registers.af.msb, carry) ||
+                          Registers::subtraction_half_carry(registers.af.msb - carry, r8);
 
-    bool has_carry =
-        Registers::subtraction_carry(registers.af.msb, r8) ||
-        Registers::subtraction_carry(registers.af.msb, carry) ||
-        Registers::subtraction_carry(registers.af.msb - carry, r8);
+    bool has_carry = Registers::subtraction_carry(registers.af.msb, r8) ||
+                     Registers::subtraction_carry(registers.af.msb, carry) ||
+                     Registers::subtraction_carry(registers.af.msb - carry, r8);
 
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(1);
@@ -744,9 +1404,9 @@ void CPU::SBC_A_r8(uint8_t& r8)
     registers.af.msb = result;
 }
 
-void CPU::AND_A_r8(uint8_t& r8)
+void CPU::AND_A_r8(u8 &r8)
 {
-    uint8_t result = registers.af.msb & r8;
+    u8 result = registers.af.msb & r8;
 
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
@@ -762,7 +1422,6 @@ void CPU::STOP()
     exit(1);
 }
 
-
 void CPU::DI()
 {
     // DI doesn't have the 1 cycle delay that EI has
@@ -777,41 +1436,41 @@ void CPU::EI()
 }
 
 // LD [r16], imm8
-void CPU::LD_r16mem_imm8(uint16_t& r16)
+void CPU::LD_r16mem_imm8(u16 &r16)
 {
-    uint8_t imm8 = mmu.bus_read(registers.pc++);
+    u8 imm8 = mmu.bus_read(registers.pc++);
     mmu.bus_write(r16, imm8);
 }
 
 // INC [r16]
-void CPU::INC_r16mem(uint16_t& r16mem)
+void CPU::INC_r16mem(u16 &r16mem)
 {
-    uint8_t value = mmu.bus_read(r16mem);
+    u8 value = mmu.bus_read(r16mem);
     INC_r8(value);
     mmu.bus_write(r16mem, value);
 }
 
 // DEC [r16]
-void CPU::DEC_r16mem(uint16_t& r16mem)
+void CPU::DEC_r16mem(u16 &r16mem)
 {
-    uint8_t value = mmu.bus_read(r16mem);
+    u8 value = mmu.bus_read(r16mem);
     DEC_r8(value);
     mmu.bus_write(r16mem, value);
 }
 
 // BIT b3, r8
-void CPU::BIT_b3_r8(uint8_t bit, uint8_t &r8source)
+void CPU::BIT_b3_r8(u8 bit, u8 &r8source)
 {
-    uint8_t mask = (1 << bit);
+    u8 mask = (1 << bit);
     bool set = !!(mask & r8source);
     registers.set_zero_flag(!set);
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(1);
 }
-void CPU::BIT_b3_r16mem(uint8_t bit, uint16_t &r16mem)
+void CPU::BIT_b3_r16mem(u8 bit, u16 &r16mem)
 {
-    uint8_t value = mmu.bus_read(r16mem);
-    uint8_t mask = (1 << bit);
+    u8 value = mmu.bus_read(r16mem);
+    u8 mask = (1 << bit);
     bool set = !!(mask & value);
 
     registers.set_zero_flag(!set);
@@ -819,42 +1478,42 @@ void CPU::BIT_b3_r16mem(uint8_t bit, uint16_t &r16mem)
     registers.set_half_carry_flag(1);
 }
 
-void CPU::RES_b3_r8(uint8_t bit, uint8_t& r8)
+void CPU::RES_b3_r8(u8 bit, u8 &r8)
 {
     r8 &= ~(1 << bit);
 }
-void CPU::RES_b3_r16mem(uint8_t bit, uint16_t& r16mem)
+void CPU::RES_b3_r16mem(u8 bit, u16 &r16mem)
 {
-    uint8_t value = mmu.bus_read(r16mem);
+    u8 value = mmu.bus_read(r16mem);
     value &= ~(1 << bit);
     mmu.bus_write(r16mem, value);
 }
 
-void CPU::SET_b3_r8(uint8_t bit, uint8_t& r8)
+void CPU::SET_b3_r8(u8 bit, u8 &r8)
 {
     r8 |= 1 << bit;
 }
 
-void CPU::SET_b3_r16mem(uint8_t bit, uint16_t &r16mem)
+void CPU::SET_b3_r16mem(u8 bit, u16 &r16mem)
 {
-    uint8_t value = mmu.bus_read(r16mem);
+    u8 value = mmu.bus_read(r16mem);
     value |= 1 << bit;
     mmu.bus_write(r16mem, value);
 }
 
 // INC r8
-void CPU::INC_r8(uint8_t& r8)
+void CPU::INC_r8(u8 &r8)
 {
-    uint8_t prev = r8++;
+    u8 prev = r8++;
     registers.set_half_carry_flag(Registers::addition_half_carry(prev, 1));
     registers.set_sub_flag(0);
     registers.set_zero_flag(r8 == 0);
 }
 
 // DEC r8
-void CPU::DEC_r8(uint8_t& r8)
+void CPU::DEC_r8(u8 &r8)
 {
-    uint8_t prev = r8--;
+    u8 prev = r8--;
     registers.set_half_carry_flag(Registers::subtraction_half_carry(prev, 1));
     registers.set_sub_flag(1);
     registers.set_zero_flag(r8 == 0);
@@ -863,7 +1522,7 @@ void CPU::DEC_r8(uint8_t& r8)
 // JR cc, imm8
 void CPU::JR_cc_imm8(bool condition_met)
 {
-    int8_t e = (int8_t) mmu.bus_read(registers.pc++);
+    i8 e = (i8)mmu.bus_read(registers.pc++);
     if (condition_met)
     {
         registers.pc += e;
@@ -873,7 +1532,7 @@ void CPU::JR_cc_imm8(bool condition_met)
 // JP imm16
 void CPU::JP_imm16()
 {
-    uint16_t nn = mmu.bus_read_word(registers.pc++);
+    u16 nn = mmu.bus_read_word(registers.pc++);
     registers.pc++;
     registers.pc = nn;
 }
@@ -885,22 +1544,22 @@ void CPU::JP_HL()
 }
 
 // LD r8, r8
-void CPU::LD_r8_r8(uint8_t& r8dest, uint8_t& r8source)
+void CPU::LD_r8_r8(u8 &r8dest, u8 &r8source)
 {
     r8dest = r8source;
 }
 
 // LD r8, imm8
-void CPU::LD_r8_imm8(uint8_t& r8dest)
+void CPU::LD_r8_imm8(u8 &r8dest)
 {
-    uint8_t n = mmu.bus_read(registers.pc++);
+    u8 n = mmu.bus_read(registers.pc++);
     r8dest = n;
 }
 
 // RLCA
 void CPU::RLCA()
 {
-    uint8_t msbit = registers.af.msb >> 7;
+    u8 msbit = registers.af.msb >> 7;
     registers.af.msb <<= 1;
     registers.af.msb |= msbit;
 
@@ -913,7 +1572,7 @@ void CPU::RLCA()
 // RRCA
 void CPU::RRCA()
 {
-    uint8_t lsbit = registers.af.msb & 1;
+    u8 lsbit = registers.af.msb & 1;
     registers.af.msb >>= 1;
     registers.af.msb |= (lsbit << 7);
 
@@ -926,9 +1585,9 @@ void CPU::RRCA()
 // RRA
 void CPU::RRA()
 {
-    uint8_t a = registers.af.msb;
-    const uint8_t lsbit = a & 1;
-    const uint8_t carry = registers.get_carry_flag();
+    u8 a = registers.af.msb;
+    const u8 lsbit = a & 1;
+    const u8 carry = registers.get_carry_flag();
     a >>= 1;
     a |= carry << 7;
     registers.af.msb = a;
@@ -942,8 +1601,8 @@ void CPU::RRA()
 // DAA
 void CPU::DAA()
 {
-    uint8_t offset = 0x00;
-    uint8_t a = registers.af.msb;
+    u8 offset = 0x00;
+    u8 a = registers.af.msb;
 
     bool half_carry = registers.get_half_carry_flag();
     bool carry = registers.get_carry_flag();
@@ -1005,16 +1664,16 @@ void CPU::CCF()
 // JR imm8
 void CPU::JR_imm8()
 {
-    int8_t e = (int8_t)mmu.bus_read(registers.pc++);
+    i8 e = (i8)mmu.bus_read(registers.pc++);
     registers.pc += e;
 }
 
 // RLA
 void CPU::RLA()
 {
-    uint8_t msbit = registers.af.msb >> 7;
+    u8 msbit = registers.af.msb >> 7;
     registers.af.word <<= 1;
-    registers.af.word |= (uint16_t)registers.get_carry_flag();
+    registers.af.word |= (u16)registers.get_carry_flag();
 
     registers.set_zero_flag(0);
     registers.set_sub_flag(0);
@@ -1023,31 +1682,31 @@ void CPU::RLA()
 }
 
 // LD A, (r16)
-void CPU::LD_A_r16mem(uint16_t &r16source)
+void CPU::LD_A_r16mem(u16 &r16source)
 {
-    uint8_t r16mem = mmu.bus_read(r16source);
+    u8 r16mem = mmu.bus_read(r16source);
     registers.af.msb = r16mem;
 }
 
 // LDH A, [C]
 void CPU::LDH_A_C()
 {
-    uint8_t ffc = mmu.bus_read(0xFF00 + registers.bc.lsb);
+    u8 ffc = mmu.bus_read(0xFF00 + registers.bc.lsb);
     registers.af.msb = ffc;
 }
 
 // LDH A, [imm8]
 void CPU::LDH_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(registers.pc++);
-    uint8_t ffimm8 = mmu.bus_read(0xFF00 + imm8);
+    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 ffimm8 = mmu.bus_read(0xFF00 + imm8);
     registers.af.msb = ffimm8;
 }
 
 // LDH [imm8], A
 void CPU::LDH_imm8_A()
 {
-    uint8_t imm8 = mmu.bus_read(registers.pc++);
+    u8 imm8 = mmu.bus_read(registers.pc++);
     mmu.bus_write(0xFF00 + imm8, registers.af.msb);
 }
 
@@ -1058,9 +1717,9 @@ void CPU::LDH_C_A()
 }
 
 // LD r16, imm16
-void CPU::LD_r16_imm16(uint16_t& r16dest)
+void CPU::LD_r16_imm16(u16 &r16dest)
 {
-    uint16_t nn = mmu.bus_read_word(registers.pc);
+    u16 nn = mmu.bus_read_word(registers.pc);
     registers.pc += 2;
     r16dest = nn;
 }
@@ -1068,27 +1727,27 @@ void CPU::LD_r16_imm16(uint16_t& r16dest)
 // LD [imm16], SP
 void CPU::LD_imm16_SP()
 {
-    uint16_t imm16 = mmu.bus_read_word(registers.pc);
+    u16 imm16 = mmu.bus_read_word(registers.pc);
     registers.pc += 2;
     mmu.bus_write_word(imm16, registers.sp);
 }
 
 // INC r16
-void CPU::INC_r16(uint16_t& r16)
+void CPU::INC_r16(u16 &r16)
 {
     ++r16;
 }
 
 // DEC r16
-void CPU::DEC_r16(uint16_t& r16)
+void CPU::DEC_r16(u16 &r16)
 {
     --r16;
 }
 
 // ADD HL, r16
-void CPU::ADD_HL_r16(uint16_t& r16)
+void CPU::ADD_HL_r16(u16 &r16)
 {
-    uint16_t sum = registers.hl + r16;
+    u16 sum = registers.hl + r16;
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(Registers::addition_half_carry(registers.hl, r16));
     registers.set_carry_flag(Registers::addition_carry(registers.hl, r16));
@@ -1098,13 +1757,13 @@ void CPU::ADD_HL_r16(uint16_t& r16)
 // LD [imm16], A
 void CPU::LD_imm16_A()
 {
-    uint16_t imm16 = mmu.bus_read_word(registers.pc++);
+    u16 imm16 = mmu.bus_read_word(registers.pc++);
     registers.pc++;
     mmu.bus_write(imm16, registers.af.msb);
 }
 
 // LD [r16mem], A
-void CPU::LD_r16mem_A(uint16_t& r16dest)
+void CPU::LD_r16mem_A(u16 &r16dest)
 {
     mmu.bus_write(r16dest, registers.af.msb);
 }
@@ -1112,20 +1771,20 @@ void CPU::LD_r16mem_A(uint16_t& r16dest)
 // LD A, [imm16]
 void CPU::LD_A_imm16()
 {
-    uint16_t imm16 = mmu.bus_read_word(registers.pc++);
+    u16 imm16 = mmu.bus_read_word(registers.pc++);
     registers.pc++;
-    uint8_t n = mmu.bus_read(imm16);
+    u8 n = mmu.bus_read(imm16);
     registers.af.msb = n;
 }
 
 // ADD SP, imm8
 void CPU::ADD_SP_imm8()
 {
-    uint16_t sp = registers.sp;
-    int8_t imm8 = (int8_t) mmu.bus_read(registers.pc++);
+    u16 sp = registers.sp;
+    i8 imm8 = (i8)mmu.bus_read(registers.pc++);
 
-    bool has_half_carry = Registers::addition_half_carry(static_cast<uint8_t>(sp & 0xff), imm8);
-    bool has_carry = Registers::addition_carry(static_cast<uint8_t>(sp & 0xff), imm8);
+    bool has_half_carry = Registers::addition_half_carry(static_cast<u8>(sp & 0xff), imm8);
+    bool has_carry = Registers::addition_carry(static_cast<u8>(sp & 0xff), imm8);
 
     registers.set_zero_flag(0);
     registers.set_sub_flag(0);
@@ -1137,11 +1796,11 @@ void CPU::ADD_SP_imm8()
 // LD HL, SP + imm8
 void CPU::LD_HL_SP_imm8()
 {
-    uint16_t sp = registers.sp;
-    int8_t imm8 = (int8_t) mmu.bus_read(registers.pc++);
+    u16 sp = registers.sp;
+    i8 imm8 = (i8)mmu.bus_read(registers.pc++);
 
-    bool has_half_carry = Registers::addition_half_carry(static_cast<uint8_t>(sp & 0xff), imm8);
-    bool has_carry = Registers::addition_carry(static_cast<uint8_t>(sp & 0xff), imm8);
+    bool has_half_carry = Registers::addition_half_carry(static_cast<u8>(sp & 0xff), imm8);
+    bool has_carry = Registers::addition_carry(static_cast<u8>(sp & 0xff), imm8);
 
     registers.hl = registers.sp + imm8;
 
@@ -1158,16 +1817,16 @@ void CPU::LD_SP_HL()
 }
 
 // PUSH r16stk
-void CPU::PUSH_r16stk(uint16_t& r16source)
+void CPU::PUSH_r16stk(u16 &r16source)
 {
     registers.sp -= 2;
     mmu.bus_write_word(registers.sp, r16source);
 }
 
 // RLC r8
-void CPU::RLC_r8(uint8_t& r8)
+void CPU::RLC_r8(u8 &r8)
 {
-    uint8_t msbit = r8 >> 7;
+    u8 msbit = r8 >> 7;
     r8 <<= 1;
     r8 |= msbit;
 
@@ -1176,10 +1835,10 @@ void CPU::RLC_r8(uint8_t& r8)
     registers.set_half_carry_flag(0);
     registers.set_carry_flag(msbit);
 }
-void CPU::RLC_r16mem(uint16_t& r16mem)
+void CPU::RLC_r16mem(u16 &r16mem)
 {
-    uint8_t value = mmu.bus_read(r16mem);
-    uint8_t msbit = value >> 7;
+    u8 value = mmu.bus_read(r16mem);
+    u8 msbit = value >> 7;
     value <<= 1;
     value |= msbit;
     mmu.bus_write(r16mem, value);
@@ -1190,9 +1849,9 @@ void CPU::RLC_r16mem(uint16_t& r16mem)
     registers.set_carry_flag(msbit);
 }
 
-void CPU::RRC_r8(uint8_t& r8)
+void CPU::RRC_r8(u8 &r8)
 {
-    uint8_t lsbit = r8 & 1;
+    u8 lsbit = r8 & 1;
     r8 >>= 1;
     r8 |= (lsbit << 7);
 
@@ -1201,10 +1860,10 @@ void CPU::RRC_r8(uint8_t& r8)
     registers.set_half_carry_flag(0);
     registers.set_carry_flag(lsbit);
 }
-void CPU::RRC_r16mem(uint16_t& r16mem)
+void CPU::RRC_r16mem(u16 &r16mem)
 {
-    uint8_t value = mmu.bus_read(r16mem);
-    uint8_t lsbit = value & 1;
+    u8 value = mmu.bus_read(r16mem);
+    u8 lsbit = value & 1;
     value >>= 1;
     value |= (lsbit << 7);
     mmu.bus_write(r16mem, value);
@@ -1215,10 +1874,10 @@ void CPU::RRC_r16mem(uint16_t& r16mem)
     registers.set_carry_flag(lsbit);
 }
 
-void CPU::RL_r8(uint8_t& r8)
+void CPU::RL_r8(u8 &r8)
 {
-    const uint8_t carry = registers.get_carry_flag();
-    const uint8_t msbit = r8 >> 7;
+    const u8 carry = registers.get_carry_flag();
+    const u8 msbit = r8 >> 7;
     r8 <<= 1;
     r8 |= carry;
 
@@ -1228,11 +1887,11 @@ void CPU::RL_r8(uint8_t& r8)
     registers.set_carry_flag(msbit);
 }
 // RL [r16mem]
-void CPU::RL_r16mem(uint16_t& r16mem)
+void CPU::RL_r16mem(u16 &r16mem)
 {
-    uint8_t value = mmu.bus_read(r16mem);
-    const uint8_t carry = registers.get_carry_flag();
-    const uint8_t msbit = value >> 7;
+    u8 value = mmu.bus_read(r16mem);
+    const u8 carry = registers.get_carry_flag();
+    const u8 msbit = value >> 7;
     value <<= 1;
     value |= carry;
     mmu.bus_write(r16mem, value);
@@ -1243,10 +1902,10 @@ void CPU::RL_r16mem(uint16_t& r16mem)
     registers.set_carry_flag(msbit);
 }
 
-void CPU::RR_r8(uint8_t& r8)
+void CPU::RR_r8(u8 &r8)
 {
-    const uint8_t lsbit = r8 & 1;
-    const uint8_t carry = registers.get_carry_flag();
+    const u8 lsbit = r8 & 1;
+    const u8 carry = registers.get_carry_flag();
     r8 >>= 1;
     r8 |= carry << 7;
 
@@ -1255,11 +1914,11 @@ void CPU::RR_r8(uint8_t& r8)
     registers.set_half_carry_flag(0);
     registers.set_carry_flag(lsbit);
 }
-void CPU::RR_r16mem(uint16_t& r16mem)
+void CPU::RR_r16mem(u16 &r16mem)
 {
-    uint8_t value = mmu.bus_read(r16mem);
-    const uint8_t lsbit = value & 1;
-    const uint8_t carry = registers.get_carry_flag();
+    u8 value = mmu.bus_read(r16mem);
+    const u8 lsbit = value & 1;
+    const u8 carry = registers.get_carry_flag();
     value >>= 1;
     value |= carry << 7;
     mmu.bus_write(r16mem, value);
@@ -1270,9 +1929,9 @@ void CPU::RR_r16mem(uint16_t& r16mem)
     registers.set_carry_flag(lsbit);
 }
 
-void CPU::SLA_r8(uint8_t& r8)
+void CPU::SLA_r8(u8 &r8)
 {
-    uint8_t msbit = r8 >> 7;
+    u8 msbit = r8 >> 7;
     r8 <<= 1;
 
     registers.set_zero_flag(r8 == 0);
@@ -1280,10 +1939,10 @@ void CPU::SLA_r8(uint8_t& r8)
     registers.set_half_carry_flag(0);
     registers.set_carry_flag(msbit);
 }
-void CPU::SLA_r16mem(uint16_t& r16mem)
+void CPU::SLA_r16mem(u16 &r16mem)
 {
-    uint8_t value = mmu.bus_read(r16mem);
-    uint8_t msbit = value >> 7;
+    u8 value = mmu.bus_read(r16mem);
+    u8 msbit = value >> 7;
     value <<= 1;
     mmu.bus_write(r16mem, value);
 
@@ -1293,10 +1952,10 @@ void CPU::SLA_r16mem(uint16_t& r16mem)
     registers.set_carry_flag(msbit);
 }
 
-void CPU::SRA_r8(uint8_t& r8)
+void CPU::SRA_r8(u8 &r8)
 {
-    uint8_t lsbit = r8 & 1;
-    uint8_t msbit = r8 & 0x80;
+    u8 lsbit = r8 & 1;
+    u8 msbit = r8 & 0x80;
     r8 >>= 1;
     r8 |= msbit;
     registers.set_zero_flag(r8 == 0);
@@ -1304,11 +1963,11 @@ void CPU::SRA_r8(uint8_t& r8)
     registers.set_half_carry_flag(0);
     registers.set_carry_flag(lsbit);
 }
-void CPU::SRA_r16mem(uint16_t& r16mem)
+void CPU::SRA_r16mem(u16 &r16mem)
 {
-    uint8_t value = mmu.bus_read(r16mem);
-    uint8_t lsbit = value & 1;
-    uint8_t msbit = value & 0x80;
+    u8 value = mmu.bus_read(r16mem);
+    u8 lsbit = value & 1;
+    u8 msbit = value & 0x80;
     value >>= 1;
     value |= msbit;
     mmu.bus_write(r16mem, value);
@@ -1319,10 +1978,10 @@ void CPU::SRA_r16mem(uint16_t& r16mem)
     registers.set_carry_flag(lsbit);
 }
 
-void CPU::SWAP_r8(uint8_t& r8)
+void CPU::SWAP_r8(u8 &r8)
 {
-    uint8_t lsnibble = r8 & 0x0F;
-    uint8_t msnibble = r8 & 0xF0;
+    u8 lsnibble = r8 & 0x0F;
+    u8 msnibble = r8 & 0xF0;
     r8 = (msnibble >> 4) | (lsnibble << 4);
 
     registers.set_zero_flag(r8 == 0);
@@ -1330,11 +1989,11 @@ void CPU::SWAP_r8(uint8_t& r8)
     registers.set_half_carry_flag(0);
     registers.set_carry_flag(0);
 }
-void CPU::SWAP_r16mem(uint16_t& r16mem)
+void CPU::SWAP_r16mem(u16 &r16mem)
 {
-    uint8_t value = mmu.bus_read(r16mem);
-    uint8_t lsnibble = value & 0x0F;
-    uint8_t msnibble = value & 0xF0;
+    u8 value = mmu.bus_read(r16mem);
+    u8 lsnibble = value & 0x0F;
+    u8 msnibble = value & 0xF0;
     value = (msnibble >> 4) | (lsnibble << 4);
     mmu.bus_write(r16mem, value);
 
@@ -1344,19 +2003,19 @@ void CPU::SWAP_r16mem(uint16_t& r16mem)
     registers.set_carry_flag(0);
 }
 
-void CPU::SRL_r8(uint8_t& r8)
+void CPU::SRL_r8(u8 &r8)
 {
-    uint8_t lsbit = r8 & 1;
+    u8 lsbit = r8 & 1;
     r8 >>= 1;
     registers.set_zero_flag(r8 == 0);
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(0);
     registers.set_carry_flag(lsbit);
 }
-void CPU::SRL_r16mem(uint16_t& r16mem)
+void CPU::SRL_r16mem(u16 &r16mem)
 {
-    uint8_t value = mmu.bus_read(r16mem);
-    uint8_t lsbit = value & 1;
+    u8 value = mmu.bus_read(r16mem);
+    u8 lsbit = value & 1;
     value >>= 1;
     mmu.bus_write(r16mem, value);
 
@@ -1366,15 +2025,15 @@ void CPU::SRL_r16mem(uint16_t& r16mem)
     registers.set_carry_flag(lsbit);
 }
 
-void CPU::POP_r16stk(uint16_t& r16dest)
+void CPU::POP_r16stk(u16 &r16dest)
 {
-    uint16_t data = mmu.bus_read_word(registers.sp);
+    u16 data = mmu.bus_read_word(registers.sp);
     registers.sp += 2;
 
     r16dest = data;
 }
 
-void CPU::XOR_A_r8(uint8_t& r8dest)
+void CPU::XOR_A_r8(u8 &r8dest)
 {
     registers.af.msb ^= r8dest;
     registers.set_zero_flag(registers.af.msb == 0);
@@ -1383,9 +2042,9 @@ void CPU::XOR_A_r8(uint8_t& r8dest)
     registers.set_half_carry_flag(0);
 }
 
-void CPU::OR_A_r8(uint8_t& r8)
+void CPU::OR_A_r8(u8 &r8)
 {
-    uint8_t result = registers.af.msb | r8;
+    u8 result = registers.af.msb | r8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(0);
@@ -1393,9 +2052,9 @@ void CPU::OR_A_r8(uint8_t& r8)
     registers.af.msb = result;
 }
 
-void CPU::CP_A_r8(uint8_t& r8)
+void CPU::CP_A_r8(u8 &r8)
 {
-    uint8_t result = registers.af.msb - r8;
+    u8 result = registers.af.msb - r8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(1);
     registers.set_half_carry_flag(Registers::subtraction_half_carry(registers.af.msb, r8));
@@ -1404,8 +2063,8 @@ void CPU::CP_A_r8(uint8_t& r8)
 
 void CPU::ADD_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(registers.pc++);
-    uint8_t result = registers.af.msb + imm8;
+    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 result = registers.af.msb + imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(Registers::addition_half_carry(registers.af.msb, imm8));
@@ -1415,19 +2074,17 @@ void CPU::ADD_A_imm8()
 
 void CPU::ADC_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(registers.pc++);
-    uint8_t carry = (uint8_t)registers.get_carry_flag();
-    uint8_t result = registers.af.msb + imm8 + carry;
+    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 carry = (u8)registers.get_carry_flag();
+    u8 result = registers.af.msb + imm8 + carry;
 
-    bool has_half_carry =
-        Registers::addition_half_carry(registers.af.msb, imm8) ||
-        Registers::addition_half_carry(registers.af.msb, carry) ||
-        Registers::addition_half_carry(registers.af.msb + carry, imm8);
+    bool has_half_carry = Registers::addition_half_carry(registers.af.msb, imm8) ||
+                          Registers::addition_half_carry(registers.af.msb, carry) ||
+                          Registers::addition_half_carry(registers.af.msb + carry, imm8);
 
-    bool has_carry =
-        Registers::addition_carry(registers.af.msb, imm8) ||
-        Registers::addition_carry(registers.af.msb, carry) ||
-        Registers::addition_carry(registers.af.msb + carry, imm8);
+    bool has_carry = Registers::addition_carry(registers.af.msb, imm8) ||
+                     Registers::addition_carry(registers.af.msb, carry) ||
+                     Registers::addition_carry(registers.af.msb + carry, imm8);
 
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
@@ -1438,8 +2095,8 @@ void CPU::ADC_A_imm8()
 
 void CPU::SUB_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(registers.pc++);
-    uint8_t result = registers.af.msb - imm8;
+    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 result = registers.af.msb - imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(1);
     registers.set_half_carry_flag(Registers::subtraction_half_carry(registers.af.msb, imm8));
@@ -1449,19 +2106,17 @@ void CPU::SUB_A_imm8()
 
 void CPU::SBC_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(registers.pc++);
-    uint8_t carry = registers.get_carry_flag();
-    uint8_t result = registers.af.msb - imm8 - carry;
+    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 carry = registers.get_carry_flag();
+    u8 result = registers.af.msb - imm8 - carry;
 
-    bool has_half_carry =
-        Registers::subtraction_half_carry(registers.af.msb, imm8) ||
-        Registers::subtraction_half_carry(registers.af.msb, carry) ||
-        Registers::subtraction_half_carry(registers.af.msb - carry, imm8);
+    bool has_half_carry = Registers::subtraction_half_carry(registers.af.msb, imm8) ||
+                          Registers::subtraction_half_carry(registers.af.msb, carry) ||
+                          Registers::subtraction_half_carry(registers.af.msb - carry, imm8);
 
-    bool has_carry =
-        Registers::subtraction_carry(registers.af.msb, imm8) ||
-        Registers::subtraction_carry(registers.af.msb, carry) ||
-        Registers::subtraction_carry(registers.af.msb - carry, imm8);
+    bool has_carry = Registers::subtraction_carry(registers.af.msb, imm8) ||
+                     Registers::subtraction_carry(registers.af.msb, carry) ||
+                     Registers::subtraction_carry(registers.af.msb - carry, imm8);
 
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(1);
@@ -1472,8 +2127,8 @@ void CPU::SBC_A_imm8()
 
 void CPU::AND_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(registers.pc++);
-    uint8_t result = registers.af.msb & imm8;
+    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 result = registers.af.msb & imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(1);
@@ -1483,8 +2138,8 @@ void CPU::AND_A_imm8()
 
 void CPU::XOR_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(registers.pc++);
-    uint8_t result = registers.af.msb ^ imm8;
+    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 result = registers.af.msb ^ imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(0);
@@ -1494,8 +2149,8 @@ void CPU::XOR_A_imm8()
 
 void CPU::OR_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(registers.pc++);
-    uint8_t result = registers.af.msb | imm8;
+    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 result = registers.af.msb | imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
     registers.set_half_carry_flag(0);
@@ -1505,8 +2160,8 @@ void CPU::OR_A_imm8()
 
 void CPU::CP_A_imm8()
 {
-    uint8_t imm8 = mmu.bus_read(registers.pc++);
-    uint8_t result = registers.af.msb - imm8;
+    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 result = registers.af.msb - imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(1);
     registers.set_half_carry_flag(Registers::subtraction_half_carry(registers.af.msb, imm8));
@@ -1514,62 +2169,62 @@ void CPU::CP_A_imm8()
 }
 
 // LD r8, [r16]
-void CPU::LD_r8_r16mem(uint8_t& r8, uint16_t& r16mem)
+void CPU::LD_r8_r16mem(u8 &r8, u16 &r16mem)
 {
     r8 = mmu.bus_read(r16mem);
 }
 
 // LD [r16], r8
-void CPU::LD_r16mem_r8(uint16_t& r16mem, uint8_t& r8)
+void CPU::LD_r16mem_r8(u16 &r16mem, u8 &r8)
 {
     mmu.bus_write(r16mem, r8);
 }
 
 // ADD A, [r16mem]
-void CPU::ADD_A_r16mem(uint16_t& r16mem)
+void CPU::ADD_A_r16mem(u16 &r16mem)
 {
-    uint8_t data = mmu.bus_read(r16mem);
+    u8 data = mmu.bus_read(r16mem);
     ADD_A_r8(data);
 }
 
-void CPU::ADC_A_r16mem(uint16_t& r16mem)
+void CPU::ADC_A_r16mem(u16 &r16mem)
 {
-    uint8_t data = mmu.bus_read(r16mem);
+    u8 data = mmu.bus_read(r16mem);
     ADC_A_r8(data);
 }
 
-void CPU::SUB_A_r16mem(uint16_t& r16mem)
+void CPU::SUB_A_r16mem(u16 &r16mem)
 {
-    uint8_t data = mmu.bus_read(r16mem);
+    u8 data = mmu.bus_read(r16mem);
     SUB_A_r8(data);
 }
 
-void CPU::SBC_A_r16mem(uint16_t& r16mem)
+void CPU::SBC_A_r16mem(u16 &r16mem)
 {
-    uint8_t data = mmu.bus_read(r16mem);
+    u8 data = mmu.bus_read(r16mem);
     SBC_A_r8(data);
 }
 
-void CPU::AND_A_r16mem(uint16_t& r16mem)
+void CPU::AND_A_r16mem(u16 &r16mem)
 {
-    uint8_t data = mmu.bus_read(r16mem);
+    u8 data = mmu.bus_read(r16mem);
     AND_A_r8(data);
 }
 
-void CPU::XOR_A_r16mem(uint16_t& r16mem)
+void CPU::XOR_A_r16mem(u16 &r16mem)
 {
-    uint8_t data = mmu.bus_read(r16mem);
+    u8 data = mmu.bus_read(r16mem);
     XOR_A_r8(data);
 }
 
-void CPU::OR_A_r16mem(uint16_t& r16mem)
+void CPU::OR_A_r16mem(u16 &r16mem)
 {
-    uint8_t data = mmu.bus_read(r16mem);
+    u8 data = mmu.bus_read(r16mem);
     OR_A_r8(data);
 }
 
-void CPU::CP_A_r16mem(uint16_t& r16mem)
+void CPU::CP_A_r16mem(u16 &r16mem)
 {
-    uint8_t data = mmu.bus_read(r16mem);
+    u8 data = mmu.bus_read(r16mem);
     CP_A_r8(data);
 }

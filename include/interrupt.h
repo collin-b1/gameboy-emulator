@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include "definitions.h"
 #include "memory.h"
 
 enum InterruptSource
@@ -17,8 +17,8 @@ class InterruptManager : IMemory
 public:
     InterruptManager();
 
-    [[nodiscard]] uint8_t read(uint16_t addr) const override;
-    void write(uint16_t addr, uint8_t data) override;
+    [[nodiscard]] u8 read(u16 addr) const override;
+    void write(u16 addr, u8 data) override;
 
     void request_interrupt(InterruptSource);
     void clear_interrupt_flag(InterruptSource);
@@ -26,40 +26,37 @@ public:
     bool get_ime() const;
     void set_ime(bool);
 
-    [[nodiscard]] uint8_t get_interrupt_flag() const;
-    [[nodiscard]] uint8_t get_interrupt_enable() const;
-    
+    [[nodiscard]] u8 get_interrupt_flag() const;
+    [[nodiscard]] u8 get_interrupt_enable() const;
 
 private:
     bool ime;
 
     // 0xFF0F: IF - Interrupt Flag
-    union
-    {
-        uint8_t iflag;
+    union {
+        u8 iflag;
         struct
         {
-            uint8_t vblank_req : 1;
-            uint8_t lcd_req : 1;
-            uint8_t timer_req : 1;
-            uint8_t serial_req : 1;
-            uint8_t joypad_req : 1;
-            uint8_t _unused : 3;
+            u8 vblank_req : 1;
+            u8 lcd_req : 1;
+            u8 timer_req : 1;
+            u8 serial_req : 1;
+            u8 joypad_req : 1;
+            u8 _unused : 3;
         };
     } iflag;
 
     // 0xFFFF: IE - Interrupt Enable
-    union
-    {
-        uint8_t ie;
+    union {
+        u8 ie;
         struct
         {
-            uint8_t vblank : 1;
-            uint8_t lcd : 1;
-            uint8_t timer : 1;
-            uint8_t serial : 1;
-            uint8_t joypad : 1;
-            uint8_t _unused : 3;
+            u8 vblank : 1;
+            u8 lcd : 1;
+            u8 timer : 1;
+            u8 serial : 1;
+            u8 joypad : 1;
+            u8 _unused : 3;
         };
     } ie;
 };

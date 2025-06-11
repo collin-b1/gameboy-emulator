@@ -1,10 +1,10 @@
 #include "joypad.h"
 
-Joypad::Joypad()
-    : joyp(0xFF)
-{}
+Joypad::Joypad() : joyp(0xFF)
+{
+}
 
-uint8_t Joypad::read(uint16_t addr) const
+u8 Joypad::read(u16 addr) const
 {
     if (addr == 0xFF00)
     {
@@ -17,7 +17,7 @@ uint8_t Joypad::read(uint16_t addr) const
     }
 }
 
-void Joypad::write(uint16_t addr, uint8_t data)
+void Joypad::write(u16 addr, u8 data)
 {
     if (addr == 0xFF00)
     {

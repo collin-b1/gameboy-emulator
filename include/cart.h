@@ -1,18 +1,19 @@
 #pragma once
-#include <string>
 #include <array>
 #include <cstdint>
 #include <fstream>
+#include <string>
 
+#include "definitions.h"
 #include "memory.h"
 
-constexpr uint16_t BOOT_ROM_SIZE = 0x100;
+constexpr u16 BOOT_ROM_SIZE = 0x100;
 
-constexpr uint16_t ROM_START = 0x0000;
-constexpr uint16_t ROM_END = 0x7FFF;
+constexpr u16 ROM_START = 0x0000;
+constexpr u16 ROM_END = 0x7FFF;
 
-constexpr uint16_t HEADER_START = 0x100;
-constexpr uint16_t HEADER_END = 0x14F;
+constexpr u16 HEADER_START = 0x100;
+constexpr u16 HEADER_END = 0x14F;
 
 enum CartridgeType
 {
@@ -48,29 +49,29 @@ enum CartridgeType
 
 struct CartHeaders
 {
-    uint8_t entrypoint[4];              // 0x100-0x103
-    uint8_t nintendo_logo[48];          // 0x104-0x133
+    u8 entrypoint[4];     // 0x100-0x103
+    u8 nintendo_logo[48]; // 0x104-0x133
 
     // TODO: Look into if compiler padding affects this
-    union                               // 0x134-0x143
+    union // 0x134-0x143
     {
-        uint8_t title_cgb[16];
+        u8 title_cgb[16];
         struct
         {
-            uint8_t title_only[15];
-            uint8_t cgb;
+            u8 title_only[15];
+            u8 cgb;
         };
     } title;
-    uint16_t new_licensee_code;         // 0x144-0x145
-    uint8_t sgb;                        // 0x146
-    uint8_t cartridge_type;             // 0x147
-    uint8_t rom_size;                   // 0x148
-    uint8_t ram_size;                   // 0x149
-    uint8_t destination_code;           // 0x14A
-    uint8_t old_licensee_code;          // 0x14B
-    uint8_t mask_rom_version;           // 0x14C
-    uint8_t header_checksum;            // 0x14D
-    uint16_t global_checksum;           // 0x14E-0x14F
+    u16 new_licensee_code; // 0x144-0x145
+    u8 sgb;                // 0x146
+    u8 cartridge_type;     // 0x147
+    u8 rom_size;           // 0x148
+    u8 ram_size;           // 0x149
+    u8 destination_code;   // 0x14A
+    u8 old_licensee_code;  // 0x14B
+    u8 mask_rom_version;   // 0x14C
+    u8 header_checksum;    // 0x14D
+    u16 global_checksum;   // 0x14E-0x14F
 };
 
 class Cart final : public IMemory
@@ -78,16 +79,15 @@ class Cart final : public IMemory
 public:
     Cart();
 
-    bool load_rom(std::string&);
-    bool load_boot_rom(std::string&);
+    bool load_rom(std::string &);
+    bool load_boot_rom(std::string &);
     bool load_header();
-    [[nodiscard]] uint8_t read(uint16_t) const override;
-    void write(uint16_t, uint8_t) override;
+    [[nodiscard]] u8 read(u16) const override;
+    void write(u16, u8) override;
     void print_headers() const;
 
     // Load buffer from file to an std::array
-    template <typename T, size_t N>
-    bool load_buffer(std::string& path, std::array<T, N>& buffer)
+    template <typename T, size_t N> bool load_buffer(std::string &path, std::array<T, N> &buffer)
     {
         std::ifstream rom_file;
         rom_file.open(path, std::ios::binary);
@@ -99,7 +99,7 @@ public:
 
         rom_file.seekg(0, std::ios::end);
         rom_file.seekg(0, std::ios::beg);
-        rom_file.read(reinterpret_cast<char*>(buffer.data()), buffer.size());
+        rom_file.read(reinterpret_cast<char *>(buffer.data()), buffer.size());
         rom_file.close();
 
         return load_header();
@@ -108,7 +108,7 @@ public:
 private:
     std::string name;
     CartHeaders headers;
-    std::array<uint8_t, ROM_END - ROM_START + 1> rom;
-    std::array<uint8_t, BOOT_ROM_SIZE> boot_rom;
-    uint8_t bank;
+    std::array<u8, ROM_END - ROM_START + 1> rom;
+    std::array<u8, BOOT_ROM_SIZE> boot_rom;
+    u8 bank;
 };

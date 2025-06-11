@@ -1,13 +1,11 @@
 ﻿#include "gobby.h"
-#include "debug.h"
+#include "definitions.h"
 #include "ppu.h"
 
 #include <QApplication>
 #include <QMainWindow>
 #include <QTimer>
-#include <chrono>
 #include <iostream>
-#include <memory>
 #include <thread>
 
 Gobby::Gobby(QMainWindow *window)
@@ -21,6 +19,7 @@ Gobby::Gobby(QMainWindow *window)
     , mmu{cart, ppu, interrupts, timer}
     , cpu{mmu, interrupts}
 {
+    ppu.bind_mmu(&mmu);
     window->setCentralWidget(&renderer);
 }
 
@@ -49,10 +48,10 @@ auto Gobby::load_game(const std::string &rom_name, const std::string &boot_rom) 
 
 void Gobby::tick_systems()
 {
-    uint32_t cycles{0};
+    unsigned int cycles{0};
     while (cycles < CYCLES_PER_FRAME)
     {
-        const uint8_t cpu_cycles = cpu.next_instruction();
+        const u8 cpu_cycles = cpu.next_instruction();
         cycles += cpu_cycles;
 
         // Timer tick
@@ -63,7 +62,6 @@ void Gobby::tick_systems()
 
         // std::cout << cycles << " " << cpu.get_state() << std::endl;
     }
-    ppu.draw_frame();
 }
 
 auto main(int argc, char *argv[]) -> int
@@ -71,7 +69,7 @@ auto main(int argc, char *argv[]) -> int
     QApplication app(argc, argv);
     QMainWindow window;
 
-    std::string rom_path{R"(roms\snake.gb)"};
+    std::string rom_path{R"(roms\tetris.gb)"};
     std::string boot_rom_path{R"(roms\dmg_boot.bin)"};
 
     if (argc > 1)

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <cstdint>
+#include "definitions.h"
 
 class IMemory
 {
 public:
-    [[nodiscard]] virtual uint8_t read(uint16_t) const = 0;
-    virtual void write(uint16_t, uint8_t) = 0;
+    [[nodiscard]] virtual u8 read(u16) const = 0;
+    virtual void write(u16, u8) = 0;
     virtual ~IMemory() = default;
 };

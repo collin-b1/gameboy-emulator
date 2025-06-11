@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include "definitions.h"
 #include "memory.h"
 
 class Joypad : public IMemory
@@ -8,22 +8,22 @@ class Joypad : public IMemory
 public:
     Joypad();
 
-    [[nodiscard]] uint8_t read(uint16_t) const override;
-    void write(uint16_t, uint8_t) override;
+    [[nodiscard]] u8 read(u16) const override;
+    void write(u16, u8) override;
+
 private:
     // 0xFF00: P1/JOYP
-    union
-    {
-        uint8_t joyp;
+    union {
+        u8 joyp;
         struct
         {
-            uint8_t _unused : 2;
-            uint8_t select_buttons : 1;
-            uint8_t select_dpad : 1;
-            uint8_t start_down : 1;
-            uint8_t select_up : 1;
-            uint8_t b_left : 1;
-            uint8_t a_right : 1;
+            u8 _unused : 2;
+            u8 select_buttons : 1;
+            u8 select_dpad : 1;
+            u8 start_down : 1;
+            u8 select_up : 1;
+            u8 b_left : 1;
+            u8 a_right : 1;
         };
     } joyp;
 };
