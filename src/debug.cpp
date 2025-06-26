@@ -1,25 +1,48 @@
 #include "debug.h"
-#include <QVBoxLayout>
+#include <QPainter>
 
 DebugWindow::DebugWindow(QWidget *parent) : QWidget(parent)
 {
-    setWindowTitle("Debug");
-    resize(600, 400);
+    setWindowTitle("Tile Map");
+    setFixedSize(DEBUG_SCREEN_WIDTH * RENDER_SCALE, DEBUG_SCREEN_HEIGHT * RENDER_SCALE);
+}
 
-    auto *layout = new QVBoxLayout(this);
+void DebugWindow::bind_ppu(PPU *_ppu)
+{
+    this->ppu = _ppu;
+}
 
-    registerText = new QTextEdit(this);
-    registerText->setReadOnly(true);
-    layout->addWidget(registerText);
+QImage DebugWindow::render_tile(const u8 *tile_data)
+{
+    QImage tile(8, 8, QImage::Format_RGBA8888);
 
-    memoryTable = new QTableWidget(this);
-    memoryTable->setColumnCount(17);
-    QStringList headers;
-    headers << "Address";
-    for (auto i{0}; i < 16; ++i)
+    for (auto y{0}; y < 8; ++y)
     {
-        headers << QString("%1").arg(i, 2, 16, QLatin1Char('0')).toUpper();
+        uint8_t byte1 = tile_data[y * 2];
+        uint8_t byte2 = tile_data[y * 2 + 1];
+
+        for (auto x{0}; x < 8; ++x)
+        {
+            uint8_t bit = 7 - x;
+            uint8_t lo = (byte1 >> bit) & 1;
+            uint8_t hi = (byte2 >> bit) & 1;
+            uint8_t color = (hi << 1) | lo;
+            tile.setPixel(x, y, pixel_colors[color]);
+        }
     }
-    memoryTable->setHorizontalHeaderLabels(headers);
-    layout->addWidget(memoryTable);
+    return tile;
+}
+
+void DebugWindow::paintEvent(QPaintEvent *)
+{
+    QPainter painter(this);
+    painter.scale(RENDER_SCALE, RENDER_SCALE);
+
+    for (int tileIndex = 0; tileIndex < 256; ++tileIndex)
+    {
+        const u8 *tileData = ppu->get_tile_data(tileIndex);
+        QImage tile = render_tile(tileData);
+
+        // painter.drawImage(...);
+    }
 }

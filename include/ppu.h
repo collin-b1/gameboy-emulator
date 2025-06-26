@@ -3,38 +3,39 @@
 #include <array>
 #include <cstdint>
 
+#include "definitions.h"
 #include "interrupt.h"
 #include "memory.h"
 #include "renderer.h"
 
-constexpr uint16_t VRAM_START = 0x8000;
-constexpr uint16_t VRAM_END = 0x9FFF;
+constexpr u16 VRAM_START = 0x8000;
+constexpr u16 VRAM_END = 0x9FFF;
 
-constexpr uint16_t OAM_START = 0xFE00;
-constexpr uint16_t OAM_END = 0xFE9F;
+constexpr u16 OAM_START = 0xFE00;
+constexpr u16 OAM_END = 0xFE9F;
 
-constexpr uint32_t DOTS_PER_CYCLE = 4;
-constexpr uint32_t CYCLES_PER_SCANLINE = 114 * DOTS_PER_CYCLE;
-constexpr uint32_t CYCLES_PER_FRAME = 154 * CYCLES_PER_SCANLINE;
+constexpr u32 DOTS_PER_CYCLE = 4;
+constexpr u32 CYCLES_PER_SCANLINE = 114 * DOTS_PER_CYCLE;
+constexpr u32 CYCLES_PER_FRAME = 154 * CYCLES_PER_SCANLINE;
 
-constexpr uint32_t CYCLES_OAM = 80;
-constexpr uint32_t CYCLES_HBLANK = 80;
+constexpr u32 CYCLES_OAM = 80;
+constexpr u32 CYCLES_HBLANK = 80;
 
 struct Object
 {
-    uint8_t y;
-    uint8_t x;
-    uint8_t tile_index;
+    u8 y;
+    u8 x;
+    u8 tile_index;
     union {
-        uint8_t flags;
+        u8 flags;
         struct
         {
-            uint8_t priority : 1;
-            uint8_t y_flip : 1;
-            uint8_t x_flip : 1;
-            uint8_t dmg_palette : 1;
-            uint8_t bank : 1;
-            uint8_t cgb_palette : 3;
+            u8 priority : 1;
+            u8 y_flip : 1;
+            u8 x_flip : 1;
+            u8 dmg_palette : 1;
+            u8 bank : 1;
+            u8 cgb_palette : 3;
         };
     } flags;
 };
@@ -48,21 +49,22 @@ public:
 
     void bind_mmu(MMU *_mmu);
 
-    [[nodiscard]] uint8_t read(uint16_t) const override;
-    void write(uint16_t, uint8_t) override;
+    [[nodiscard]] u8 read(u16) const override;
+    void write(u16, u8) override;
 
     // Viewport operations
     // Calculates the bottom coordinate of the viewport
-    [[nodiscard]] uint8_t get_viewport_y() const;
+    [[nodiscard]] u8 get_viewport_y() const;
     // Calculates the right coordinate of the viewport
-    [[nodiscard]] uint8_t get_viewport_x() const;
+    [[nodiscard]] u8 get_viewport_x() const;
 
     // Tile operations
-    [[nodiscard]] Object get_object_from_oam(uint8_t);
-    [[nodiscard]] const uint8_t *get_tile_data(uint8_t) const;
+    [[nodiscard]] Object get_object_from_oam(u8);
+    [[nodiscard]] const u8 *get_tile_data(u8) const;
+    [[nodiscard]] u8 get_color_id_from_tile(u8 tile, u8 x, u8 y) const;
 
-    void tick(uint16_t);
-    void dma_transfer(uint8_t);
+    void tick(u16);
+    void dma_transfer(u8);
     void render_scanline();
     void draw_frame();
 
@@ -71,118 +73,124 @@ private:
     InterruptManager &imu;
     Renderer &renderer;
 
-    uint32_t mode_clock;
+    u32 mode_clock;
+
+    u8 window_line_y;
 
     // 0x8000 - 0x9FFF: VRAM
-    std::array<uint8_t, VRAM_END - VRAM_START + 1> vram;
+    std::array<u8, VRAM_END - VRAM_START + 1> vram;
 
     // 0xFE00 - 0xFE9F: OAM
-    std::array<uint8_t, OAM_END - OAM_START + 1> oam;
+    std::array<u8, OAM_END - OAM_START + 1> oam;
 
-    // std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT> screen;
+    // OAM Sprites
+    std::array<Object, 10> visible_sprites;
+    int visible_sprite_count;
+
+    // std::array<u8, SCREEN_WIDTH * SCREEN_HEIGHT> screen;
 
     // 0xFF40: LCDC - LCD Control
     // Can be modified at any time during the frame, even mid-scanline
     union {
-        uint8_t lcdc;
+        u8 lcdc;
         struct
         {
             // Non-CGB: BG and window display
             // CGB: BG and Window master priority
-            uint8_t bg_window_enable_priority : 1;
-            uint8_t obj_enable : 1;
-            uint8_t obj_size : 1;                 // 0: 8x8, 1: 8x16
-            uint8_t bg_tile_map_area : 1;         // 0: 9800-9BFF, 1: 9C00-9FFF
-            uint8_t bg_window_tile_data_area : 1; // 0: 8800-97FF, 1: 8000-8FFF
-            uint8_t window_enable : 1;
-            uint8_t tile_map_area : 1; // 0: 9800-9BFF, 1: 9C00-9FFF
-            uint8_t lcd_ppu_enable : 1;
+            u8 bg_window_enable_priority : 1;
+            u8 obj_enable : 1;
+            u8 obj_size : 1;                 // 0: 8x8, 1: 8x16
+            u8 bg_tile_map_area : 1;         // 0: 9800-9BFF, 1: 9C00-9FFF
+            u8 bg_window_tile_data_area : 1; // 0: 8800-97FF, 1: 8000-8FFF
+            u8 window_enable : 1;
+            u8 window_tile_map_area : 1; // 0: 9800-9BFF, 1: 9C00-9FFF
+            u8 lcd_ppu_enable : 1;
         };
     } lcdc;
 
     // 0xFF41: STAT - LCD Mode
     union {
-        uint8_t stat;
+        u8 stat;
         struct
         {
-            uint8_t : 1;
-            uint8_t lyc_int_select : 1;
-            uint8_t mode_2_int_select : 1;
-            uint8_t mode_1_int_select : 1;
-            uint8_t mode_0_int_select : 1;
-            uint8_t lyc_ly_comparison : 1;
-            uint8_t ppu_mode : 2;
+            u8 : 1;
+            u8 lyc_int_select : 1;
+            u8 mode_2_int_select : 1;
+            u8 mode_1_int_select : 1;
+            u8 mode_0_int_select : 1;
+            u8 lyc_ly_comparison : 1;
+            u8 ppu_mode : 2;
         };
     } stat;
 
     // 0xFF42: SCY: Background viewport Y position
-    uint8_t scy;
+    u8 scy;
 
     // 0xFF43: SCX: Background viewport X position
-    uint8_t scx;
+    u8 scx;
 
     // 0xFF44: LY - LCDC Y-Coordinate (Current Scanline)
-    uint8_t ly;
+    u8 ly;
 
     // 0xFF45: LYC - LY Compare
-    uint8_t lyc;
+    u8 lyc;
 
     // 0xFF46: DMA: OAM DMA src & start
-    uint8_t dma;
+    u8 dma;
 
     // 0xFF47: BGP - Background Palette Data (non-CGB mode only)
     // 0: White, 1: Light gray, 2: Dark gray, 3: Black
     union {
-        uint8_t bgp;
+        u8 bgp;
         struct
         {
-            uint8_t id3 : 2;
-            uint8_t id2 : 2;
-            uint8_t id1 : 2;
-            uint8_t id0 : 2;
+            u8 id3 : 2;
+            u8 id2 : 2;
+            u8 id1 : 2;
+            u8 id0 : 2;
         };
     } bgp;
 
     // 0xFF48 - 0xFF49: OBP0, OBP1 - Object Palette Data (non-CGB mode only)
-    uint8_t obp0, obp1;
+    u8 obp0, obp1;
 
     // 0xFF4A � 0xFF4B: WY, WX: Window Y position and (X position + 7)
     // Window will be visible if wx in [0, 166] and wy in [0, 143]
-    uint8_t wy, wx;
+    u8 wy, wx;
 
     // 0xFF4D: KEY1 - Prepare Speed Switch (CGB only)
-    uint8_t key1;
+    u8 key1;
 
     // 0xFF4F: VBK - VRAM Bank (CGB only)
-    uint8_t vbk;
+    u8 vbk;
 
     // 0xFF51 - 0xFF55: HDMA1 - HDMA5 - DMA Transfer (CGB only)
-    uint8_t hdma1, hdma2, hdma3, hdma4, hdma5;
+    u8 hdma1, hdma2, hdma3, hdma4, hdma5;
 
     // 0xFF68: BCPS/BGPI - Background Palette Index (CGB only)
     // Can never be accessed outside VBlank and HBlank
     union {
-        uint8_t bcps;
+        u8 bcps;
         struct
         {
-            uint8_t auto_increment : 1;
-            uint8_t : 1;
-            uint8_t address : 6;
+            u8 auto_increment : 1;
+            u8 : 1;
+            u8 address : 6;
         };
     } bcps;
 
     // 0xFF69: BCPD/BGPD - Background Palette Data (CGB only)
     union {
-        uint16_t bcpd;
+        u16 bcpd;
         struct
         {
-            uint16_t red_intensity : 5;
-            uint16_t green_intensity : 5;
-            uint16_t blue_intensity : 5;
-            uint16_t : 1;
+            u16 red_intensity : 5;
+            u16 green_intensity : 5;
+            u16 blue_intensity : 5;
+            u16 : 1;
         };
     } bcpd;
 
     // 0xFF6A - 0xFF6B: OCPS/OBPI - Object Palette Index (CGB only)
-    uint8_t ocps, ocpd;
+    u8 ocps, ocpd;
 };

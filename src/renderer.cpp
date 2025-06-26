@@ -32,7 +32,7 @@ Renderer::Renderer(QWidget *parent)
     //     frame_buffer[i] = 0xFFFFFFFF;
     // }
 
-    frame_buffer.fill(0xFFFFFFFF);
+    frame_buffer.fill(pixel_colors.at(0));
     setFixedSize(SCREEN_WIDTH * RENDER_SCALE, SCREEN_HEIGHT * RENDER_SCALE);
 }
 

@@ -69,7 +69,7 @@ auto main(int argc, char *argv[]) -> int
     QApplication app(argc, argv);
     QMainWindow window;
 
-    std::string rom_path{R"(roms\tetris.gb)"};
+    std::string rom_path{R"(roms\dmg-acid2.gb)"};
     std::string boot_rom_path{R"(roms\dmg_boot.bin)"};
 
     if (argc > 1)

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 
 using u8 = uint8_t;
@@ -11,3 +12,5 @@ using i8 = int8_t;
 using i16 = int16_t;
 using i32 = int32_t;
 using i64 = int64_t;
+
+static constexpr std::array<u32, 4> pixel_colors{0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000};

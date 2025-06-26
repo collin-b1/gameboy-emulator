@@ -29,6 +29,4 @@ private:
 
     //    std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> window;
     //    std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> renderer;
-
-    static constexpr std::array<u32, 4> pixel_colors{0xFF000000, 0xFF555555, 0xFFAAAAAA, 0xFFFFFFFF};
 };

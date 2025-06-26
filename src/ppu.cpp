@@ -16,6 +16,9 @@ PPU::PPU(InterruptManager &imu, Renderer &renderer)
     , mmu(nullptr)
     , renderer(renderer)
     , mode_clock(0)
+    , window_line_y(0)
+    , visible_sprites()
+    , visible_sprite_count(0)
     , vram()
     , oam()
     , lcdc(0)
@@ -148,7 +151,7 @@ void PPU::write(u16 addr, u8 data)
     case 0xFF43:
         scx = data;
         break;
-    case 0xFF44: /*ly = data*/;
+    case 0xFF44:
         break; // Read Only
     case 0xFF45:
         lyc = data;
@@ -244,7 +247,12 @@ u8 PPU::get_viewport_x() const
 void PPU::tick(const u16 cycles)
 {
     if (!lcdc.lcd_ppu_enable)
+    {
+        mode_clock = 0;
+        ly = 0;
+        stat.ppu_mode = MODE_HBLANK;
         return;
+    }
 
     mode_clock += cycles;
 
@@ -253,6 +261,22 @@ void PPU::tick(const u16 cycles)
     case MODE_OAM_SEARCH:
         if (mode_clock >= 80)
         {
+            // OAM search
+            visible_sprite_count = 0;
+
+            const auto sprite_height = lcdc.obj_size ? (u8)16 : (u8)8;
+
+            for (auto obj_i{0}; obj_i < 40 && visible_sprite_count < 10; ++obj_i)
+            {
+                const auto obj = get_object_from_oam(obj_i);
+                const auto obj_y = obj.y - 16;
+
+                if (ly >= obj_y && ly < (obj_y + sprite_height))
+                {
+                    visible_sprites[visible_sprite_count++] = obj;
+                }
+            }
+
             mode_clock %= 80;
             stat.ppu_mode = MODE_VRAM;
         }
@@ -272,6 +296,11 @@ void PPU::tick(const u16 cycles)
         {
             mode_clock %= 204;
             ++ly;
+
+            if (lcdc.window_enable && ly >= wy && ly < SCREEN_HEIGHT && wx < 166)
+            {
+                ++window_line_y;
+            }
 
             if (ly == 144)
             {
@@ -372,63 +401,125 @@ Object PPU::get_object_from_oam(u8 idx)
 
 void PPU::render_scanline()
 {
-    if (!lcdc.lcd_ppu_enable)
+    if (ly >= SCREEN_HEIGHT)
         return;
 
-    if (ly < SCREEN_HEIGHT)
+    // Push pixel to frame buffer
+    for (u8 x{0}; x < SCREEN_WIDTH; ++x)
     {
-        // OAM search
-        auto objs_found{0};
-        Object objs[10];
-        for (auto obj_i{0}; obj_i < 40; ++obj_i)
-        {
-            const auto obj = get_object_from_oam(obj_i);
+        const auto use_window = lcdc.window_enable && ly >= wy && x >= (wx - 7);
+        const auto bg_enabled = lcdc.bg_window_enable_priority;
 
-            const auto sprite_height = lcdc.obj_size ? 16 : 8;
-            const auto obj_y = obj.y - 16;
-            if (ly >= obj_y && ly < obj_y + sprite_height)
+        u8 tile_x, tile_y, translated_x, translated_y;
+        u16 tile_map_addr;
+        u8 final_pixel_color;
+
+        if (bg_enabled)
+        {
+            if (use_window) // Window
             {
-                objs[objs_found] = obj;
+                u8 window_x = x - (wx - 7);
+                u8 window_y = ly - wy;
+
+                tile_x = window_x / 8;
+                tile_y = window_line_y / 8;
+
+                translated_x = window_x % 8;
+                translated_y = window_line_y % 8;
+
+                tile_map_addr = (lcdc.window_tile_map_area ? 0x9C00 : 0x9800) + (32 * tile_y + tile_x);
             }
-        }
+            else // Background
+            {
+                const auto pixel_x = (x + scx) % 256;
+                const auto pixel_y = (ly + scy) % 256;
 
-        // Push pixel to frame buffer
-        for (auto x{0}; x < SCREEN_WIDTH; ++x)
-        {
-            // TODO: Get Tilemap index from VRAM. Pull BG tile data and display correct line
-            const auto pixel_x = (x + scx) % SCREEN_WIDTH;
-            const auto pixel_y = (ly + scy) % SCREEN_HEIGHT;
+                tile_x = pixel_x / 8;
+                tile_y = pixel_y / 8;
 
-            const auto tile_x = pixel_x / 8;
-            const auto tile_y = pixel_y / 8;
+                translated_x = pixel_x % 8;
+                translated_y = pixel_y % 8;
 
-            const auto tile_map_addr = (lcdc.bg_tile_map_area ? 0x9C00 : 0x9800) + (32 * tile_y + tile_x);
+                tile_map_addr = (lcdc.bg_tile_map_area ? 0x9C00 : 0x9800) + (32 * tile_y + tile_x);
+            }
+
             const auto tile_map_index = vram[tile_map_addr - VRAM_START];
+            const auto color_id = get_color_id_from_tile(tile_map_index, translated_x, translated_y);
 
-            const auto tile_data = get_tile_data(tile_map_index);
-
-            // std::cout << tile_data[0] << std::endl;
-
-            const auto translated_x = pixel_x % 8;
-            const auto translated_y = pixel_y % 8;
-
-            const auto tile_upper = *(tile_data + 2 * translated_y);
-            const auto tile_lower = *(tile_data + 2 * translated_y + 1);
-
-            const auto tile_pixel =
-                ((tile_upper >> (7 - translated_x)) & 0x1) | (((tile_lower >> (7 - translated_x)) & 0x1) << 1);
-
-            const auto pixel_color = (bgp.bgp >> tile_pixel) & 0x3;
-
-            renderer.push_pixel(pixel_x, pixel_y, pixel_color);
+            const auto bg_pixel_color = (bgp.bgp >> (color_id * 2)) & 0x3;
+            final_pixel_color = bg_pixel_color;
         }
-    }
+        else
+        {
+            final_pixel_color = 0;
+        }
 
-    // Increment LY
-    // ly = (ly + 1) % 154;
+        // Sprites
+        for (auto sprite : visible_sprites)
+        {
+            u8 sprite_x = x - (sprite.x - 8);
+            if (sprite_x < 0 || sprite_x >= 8)
+                continue; // Sprite X does not overlap with current pixel
+
+            u8 sprite_y = ly - (sprite.y - 16);
+            u8 sprite_height = lcdc.obj_size ? 16 : 8;
+            if (sprite_y < 0 || sprite_y >= sprite_height)
+                continue; // Sprite Y does not overlap with current pixel
+
+            if (sprite.flags.x_flip)
+                sprite_x = 7 - sprite_x;
+
+            if (sprite.flags.y_flip)
+                sprite_y = sprite_height - 1 - sprite_y;
+
+            // Change tile index if in 8x16 mode
+            u8 tile_idx = sprite.tile_index;
+            if (sprite_height == 16)
+            {
+                tile_idx &= 0xFE;
+                if (sprite_y >= 8)
+                {
+                    tile_idx += 1;
+                    sprite_y -= 8;
+                }
+            }
+
+            const auto sprite_color_id = get_color_id_from_tile(tile_idx, sprite_x, sprite_y);
+
+            if (sprite_color_id == 0)
+                continue; // Transparent pixel
+
+            u8 palette = sprite.flags.dmg_palette ? obp1 : obp0;
+            u8 sprite_pixel_color = (palette >> (sprite_color_id * 2)) & 0x3;
+
+            const auto bg_transparent = (final_pixel_color == 0);
+            const auto sprite_priority = !(sprite.flags.priority);
+
+            if (bg_transparent || sprite_priority || !bg_enabled)
+            {
+                final_pixel_color = sprite_pixel_color;
+            }
+
+            break;
+        }
+
+        renderer.push_pixel(x, ly, final_pixel_color);
+    }
 }
 
 void PPU::draw_frame()
 {
     renderer.render_frame_buffer();
+}
+
+u8 PPU::get_color_id_from_tile(u8 tile, u8 x, u8 y) const
+{
+    const auto tile_data = get_tile_data(tile);
+
+    const auto tile_upper = *(tile_data + 2 * y);
+    const auto tile_lower = *(tile_data + 2 * y + 1);
+
+    const auto color_id = ((tile_upper >> (7 - x)) & 0x1) | (((tile_lower >> (7 - x)) & 0x1) << 1);
+
+    return color_id;
 }
