@@ -324,6 +324,7 @@ void PPU::tick(const u16 cycles)
             {
                 draw_frame();
                 ly = 0;
+                window_line_y = 0;
                 stat.ppu_mode = MODE_OAM_SEARCH;
             }
         }
@@ -336,7 +337,7 @@ void PPU::dma_transfer(u8 source_byte)
     u16 base = source_byte << 8;
     for (int i = 0; i < 0xA0; ++i)
         oam[i] = mmu->bus_read(base + i);
-};
+}
 
 const u8 *PPU::get_tile_data(u8 idx) const
 {
@@ -455,8 +456,9 @@ void PPU::render_scanline()
         }
 
         // Sprites
-        for (auto sprite : visible_sprites)
+        for (auto sprite_idx{0}; sprite_idx < visible_sprite_count; ++sprite_idx)
         {
+            const auto sprite = visible_sprites[sprite_idx];
             u8 sprite_x = x - (sprite.x - 8);
             if (sprite_x < 0 || sprite_x >= 8)
                 continue; // Sprite X does not overlap with current pixel
