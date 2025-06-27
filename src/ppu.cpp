@@ -60,7 +60,7 @@ u8 PPU::read(u16 addr) const
     case 0xFF40:
         return lcdc.lcdc;
     case 0xFF41:
-        return (stat.stat & ~0x6) | (ly == lyc) << 2;
+        return (stat.stat & ~0x4) | (ly == lyc) << 2;
     case 0xFF42:
         return scy;
     case 0xFF43:
@@ -143,7 +143,10 @@ void PPU::write(u16 addr, u8 data)
         lcdc.lcdc = data;
         break;
     case 0xFF41:
-        stat.stat = (data & 0xF8) | (stat.stat & 0x7);
+        stat.mode_0_int_select = (data >> 3) & 1;
+        stat.mode_1_int_select = (data >> 4) & 1;
+        stat.mode_2_int_select = (data >> 5) & 1;
+        stat.lyc_int_select = (data >> 6) & 1;
         break;
     case 0xFF42:
         scy = data;
@@ -295,6 +298,7 @@ void PPU::tick(const u16 cycles)
         if (mode_clock >= 204)
         {
             mode_clock %= 204;
+
             ++ly;
 
             if (lcdc.window_enable && ly >= wy && ly < SCREEN_HEIGHT && wx < 166)
@@ -330,6 +334,12 @@ void PPU::tick(const u16 cycles)
         }
         break;
     }
+
+    // TODO: Figure out why this makes screen scroll rapidly
+    //    if ((ly == lyc) && stat.lyc_int_select)
+    //    {
+    //        imu.request_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
+    //    }
 }
 
 void PPU::dma_transfer(u8 source_byte)
@@ -413,7 +423,7 @@ void PPU::render_scanline()
 
         u8 tile_x, tile_y, translated_x, translated_y;
         u16 tile_map_addr;
-        u8 final_pixel_color;
+        u8 final_pixel_color = 0;
 
         if (bg_enabled)
         {
@@ -449,10 +459,6 @@ void PPU::render_scanline()
 
             const auto bg_pixel_color = (bgp.bgp >> (color_id * 2)) & 0x3;
             final_pixel_color = bg_pixel_color;
-        }
-        else
-        {
-            final_pixel_color = 0;
         }
 
         // Sprites

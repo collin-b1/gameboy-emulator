@@ -1,7 +1,7 @@
 #include "interrupt.h"
 #include <iostream>
 
-InterruptManager::InterruptManager() : ime{false}, ie{0}, iflag{0}
+InterruptManager::InterruptManager() : ime{false}, ie{0}, iflag{0xE1}
 {
 }
 

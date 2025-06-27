@@ -113,13 +113,13 @@ private:
         u8 stat;
         struct
         {
-            u8 : 1;
-            u8 lyc_int_select : 1;
-            u8 mode_2_int_select : 1;
-            u8 mode_1_int_select : 1;
-            u8 mode_0_int_select : 1;
-            u8 lyc_ly_comparison : 1;
             u8 ppu_mode : 2;
+            u8 lyc_ly_comparison : 1;
+            u8 mode_0_int_select : 1;
+            u8 mode_1_int_select : 1;
+            u8 mode_2_int_select : 1;
+            u8 lyc_int_select : 1;
+            u8 : 1;
         };
     } stat;
 
