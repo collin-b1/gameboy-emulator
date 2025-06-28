@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QImage>
 #include <array>
 #include <cstdint>
 
@@ -62,6 +63,7 @@ public:
     [[nodiscard]] Object get_object_from_oam(u8);
     [[nodiscard]] const u8 *get_tile_data(u8) const;
     [[nodiscard]] u8 get_color_id_from_tile(u8 tile, u8 x, u8 y) const;
+    QImage generate_tile_map() const;
 
     void tick(u16);
     void dma_transfer(u8);

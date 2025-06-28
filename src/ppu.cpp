@@ -107,14 +107,11 @@ u8 PPU::read(u16 addr) const
         if (addr >= VRAM_START && addr <= VRAM_END)
         {
             // VRAM is only accessible during Modes 0-2
-            if (stat.ppu_mode != MODE_VRAM)
-            {
-                return vram[addr - VRAM_START];
-            }
-            else
+            if (stat.ppu_mode == MODE_VRAM && lcdc.lcd_ppu_enable)
             {
                 return 0xFF;
             }
+            return vram[addr - VRAM_START];
         }
         else if (addr >= OAM_START && addr <= OAM_END)
         {
@@ -218,7 +215,7 @@ void PPU::write(u16 addr, u8 data)
         if (addr >= VRAM_START && addr <= VRAM_END)
         {
             // VRAM is only accessible during Modes 0-2
-            if (stat.ppu_mode != MODE_HBLANK && stat.ppu_mode != MODE_OAM_SEARCH)
+            if (stat.ppu_mode == MODE_VRAM && lcdc.lcd_ppu_enable)
             {
                 return;
             }
@@ -251,9 +248,9 @@ void PPU::tick(const u16 cycles)
 {
     if (!lcdc.lcd_ppu_enable)
     {
-        mode_clock = 0;
-        ly = 0;
-        stat.ppu_mode = MODE_HBLANK;
+        //        mode_clock = 0;
+        //        ly = 0;
+        //        stat.ppu_mode = MODE_HBLANK;
         return;
     }
 
@@ -413,53 +410,59 @@ Object PPU::get_object_from_oam(u8 idx)
 void PPU::render_scanline()
 {
     if (ly >= SCREEN_HEIGHT)
+    {
         return;
+    }
+
+    const auto bg_enabled = lcdc.bg_window_enable_priority;
+
+    if (!bg_enabled)
+    {
+        renderer.blank_line(ly);
+        return;
+    }
 
     // Push pixel to frame buffer
     for (u8 x{0}; x < SCREEN_WIDTH; ++x)
     {
         const auto use_window = lcdc.window_enable && ly >= wy && x >= (wx - 7);
-        const auto bg_enabled = lcdc.bg_window_enable_priority;
 
         u8 tile_x, tile_y, translated_x, translated_y;
         u16 tile_map_addr;
         u8 final_pixel_color = 0;
 
-        if (bg_enabled)
+        if (use_window) // Window
         {
-            if (use_window) // Window
-            {
-                u8 window_x = x - (wx - 7);
-                u8 window_y = ly - wy;
+            u8 window_x = x - (wx - 7);
+            u8 window_y = ly - wy;
 
-                tile_x = window_x / 8;
-                tile_y = window_line_y / 8;
+            tile_x = window_x / 8;
+            tile_y = window_line_y / 8;
 
-                translated_x = window_x % 8;
-                translated_y = window_line_y % 8;
+            translated_x = window_x % 8;
+            translated_y = window_line_y % 8;
 
-                tile_map_addr = (lcdc.window_tile_map_area ? 0x9C00 : 0x9800) + (32 * tile_y + tile_x);
-            }
-            else // Background
-            {
-                const auto pixel_x = (x + scx) % 256;
-                const auto pixel_y = (ly + scy) % 256;
-
-                tile_x = pixel_x / 8;
-                tile_y = pixel_y / 8;
-
-                translated_x = pixel_x % 8;
-                translated_y = pixel_y % 8;
-
-                tile_map_addr = (lcdc.bg_tile_map_area ? 0x9C00 : 0x9800) + (32 * tile_y + tile_x);
-            }
-
-            const auto tile_map_index = vram[tile_map_addr - VRAM_START];
-            const auto color_id = get_color_id_from_tile(tile_map_index, translated_x, translated_y);
-
-            const auto bg_pixel_color = (bgp.bgp >> (color_id * 2)) & 0x3;
-            final_pixel_color = bg_pixel_color;
+            tile_map_addr = (lcdc.window_tile_map_area ? 0x9C00 : 0x9800) + (32 * tile_y + tile_x);
         }
+        else // Background
+        {
+            const auto pixel_x = (x + scx) % 256;
+            const auto pixel_y = (ly + scy) % 256;
+
+            tile_x = pixel_x / 8;
+            tile_y = pixel_y / 8;
+
+            translated_x = pixel_x % 8;
+            translated_y = pixel_y % 8;
+
+            tile_map_addr = (lcdc.bg_tile_map_area ? 0x9C00 : 0x9800) + (32 * tile_y + tile_x);
+        }
+
+        const auto tile_map_index = vram[tile_map_addr - VRAM_START];
+        const auto color_id = get_color_id_from_tile(tile_map_index, translated_x, translated_y);
+
+        const auto bg_pixel_color = (bgp.bgp >> (color_id * 2)) & 0x3;
+        final_pixel_color = bg_pixel_color;
 
         // Sprites
         for (auto sprite_idx{0}; sprite_idx < visible_sprite_count; ++sprite_idx)
@@ -530,4 +533,35 @@ u8 PPU::get_color_id_from_tile(u8 tile, u8 x, u8 y) const
     const auto color_id = ((tile_upper >> (7 - x)) & 0x1) | (((tile_lower >> (7 - x)) & 0x1) << 1);
 
     return color_id;
+}
+
+QImage PPU::generate_tile_map() const
+{
+
+    QImage img(8 * DEBUG_TILES_PER_ROW, 8 * DEBUG_TOTAL_ROWS, QImage::Format_RGB888);
+    img.fill(Qt::black);
+
+    for (int tile_idx = 0; tile_idx < DEBUG_TILES_PER_ROW * DEBUG_TOTAL_ROWS; ++tile_idx)
+    {
+        const u8 tile_x = (tile_idx % DEBUG_TILES_PER_ROW) * 8;
+        const u8 tile_y = (tile_idx / DEBUG_TILES_PER_ROW) * 8;
+
+        for (int y = 0; y < 8; ++y)
+        {
+            for (int x = 0; x < 8; ++x)
+            {
+                const auto tile_data = &vram[tile_idx * 16];
+
+                const auto tile_upper = *(tile_data + 2 * y);
+                const auto tile_lower = *(tile_data + 2 * y + 1);
+
+                const auto color_id = ((tile_upper >> (7 - x)) & 0x1) | (((tile_lower >> (7 - x)) & 0x1) << 1);
+                const auto tile_pixel_color = (bgp.bgp >> (color_id * 2)) & 0x3;
+
+                img.setPixelColor(tile_x + x, tile_y + y, pixel_colors[tile_pixel_color]);
+            }
+        }
+    }
+
+    return img;
 }

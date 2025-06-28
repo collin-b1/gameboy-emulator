@@ -9,7 +9,7 @@ u8 Joypad::read(u16 addr) const
     if (addr == 0xFF00)
     {
         // Upper two bits always return 1
-        return 0xC0 | joyp.joyp;
+        return 0xFF; // 0xC0 | joyp.joyp;
     }
     else
     {

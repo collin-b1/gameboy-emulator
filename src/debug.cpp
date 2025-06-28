@@ -1,48 +1,59 @@
 #include "debug.h"
+#include <QMouseEvent>
 #include <QPainter>
+#include <QToolTip>
 
 DebugWindow::DebugWindow(QWidget *parent) : QWidget(parent)
 {
-    setWindowTitle("Tile Map");
-    setFixedSize(DEBUG_SCREEN_WIDTH * RENDER_SCALE, DEBUG_SCREEN_HEIGHT * RENDER_SCALE);
+    setFixedSize(DEBUG_SCREEN_WIDTH * DEBUG_RENDER_SCALE, DEBUG_SCREEN_HEIGHT * DEBUG_RENDER_SCALE);
+    setMouseTracking(true);
 }
 
-void DebugWindow::bind_ppu(PPU *_ppu)
+void DebugWindow::set_tile_map(const QImage &image)
 {
-    this->ppu = _ppu;
-}
-
-QImage DebugWindow::render_tile(const u8 *tile_data)
-{
-    QImage tile(8, 8, QImage::Format_RGBA8888);
-
-    for (auto y{0}; y < 8; ++y)
-    {
-        uint8_t byte1 = tile_data[y * 2];
-        uint8_t byte2 = tile_data[y * 2 + 1];
-
-        for (auto x{0}; x < 8; ++x)
-        {
-            uint8_t bit = 7 - x;
-            uint8_t lo = (byte1 >> bit) & 1;
-            uint8_t hi = (byte2 >> bit) & 1;
-            uint8_t color = (hi << 1) | lo;
-            tile.setPixel(x, y, pixel_colors[color]);
-        }
-    }
-    return tile;
+    this->tile_map_image = image;
+    update();
 }
 
 void DebugWindow::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
-    painter.scale(RENDER_SCALE, RENDER_SCALE);
-
-    for (int tileIndex = 0; tileIndex < 256; ++tileIndex)
+    if (!tile_map_image.isNull())
     {
-        const u8 *tileData = ppu->get_tile_data(tileIndex);
-        QImage tile = render_tile(tileData);
+        // Render Tile Map
+        painter.scale(DEBUG_RENDER_SCALE, DEBUG_RENDER_SCALE);
+        painter.drawImage(0, 0, tile_map_image);
 
-        // painter.drawImage(...);
+        // Render Mouse Helper
+        if (hovered_tile.x() >= 0 && hovered_tile.y() >= 0)
+        {
+            QRect tile_rect(hovered_tile.x() * 8, hovered_tile.y() * 8, 8, 8);
+            painter.setPen(Qt::red);
+            painter.drawRect(tile_rect);
+        }
+    }
+}
+void DebugWindow::mouseMoveEvent(QMouseEvent *event)
+{
+    const QPoint pos = event->pos();
+    const auto pos_x = pos.x() / (8 * DEBUG_RENDER_SCALE);
+    const auto pos_y = pos.y() / (8 * DEBUG_RENDER_SCALE);
+
+    const auto hovered_tile_idx = pos_y * DEBUG_TILES_PER_ROW + pos_x;
+
+    if (hovered_tile_idx >= 0 && hovered_tile_idx < DEBUG_TILES_PER_ROW * DEBUG_TOTAL_ROWS)
+    {
+        hovered_tile = QPoint(pos_x, pos_y);
+        update();
+
+        const u16 tile_addr = 0x8000 + hovered_tile_idx * 16;
+        const QString tile_tooltip =
+            QString("Tile %1 (0x%2)").arg(hovered_tile_idx).arg(std::format("{:04X}", tile_addr));
+        QToolTip::showText(event->globalPosition().toPoint(), tile_tooltip, this);
+    }
+    else
+    {
+        hovered_tile = QPoint(-1, -1);
+        update();
     }
 }

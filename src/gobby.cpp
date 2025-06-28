@@ -3,6 +3,7 @@
 #include "ppu.h"
 
 #include <QApplication>
+#include <QHBoxLayout>
 #include <QMainWindow>
 #include <QTimer>
 #include <iostream>
@@ -31,12 +32,7 @@ auto Gobby::load_game(const std::string &rom_name, const std::string &boot_rom) 
     bool rom_loaded = cart.load_rom(rom_path);
     bool boot_rom_loaded = cart.load_boot_rom(boot_rom_path);
 
-    if (!rom_loaded)
-    {
-        return false;
-    }
-
-    if (!boot_rom_loaded)
+    if (!rom_loaded || !boot_rom_loaded)
     {
         return false;
     }
@@ -63,13 +59,21 @@ void Gobby::tick_systems()
         // std::cout << cycles << " " << cpu.get_state() << std::endl;
     }
 }
+Renderer *Gobby::get_renderer_widget()
+{
+    return &renderer;
+}
+QImage Gobby::get_tile_map_image() const
+{
+    return ppu.generate_tile_map();
+}
 
 auto main(int argc, char *argv[]) -> int
 {
     QApplication app(argc, argv);
     QMainWindow window;
 
-    std::string rom_path{R"(roms\tetris.gb)"};
+    std::string rom_path{R"(roms\dmg-acid2.gb)"};
     std::string boot_rom_path{R"(roms\dmg_boot.bin)"};
 
     if (argc > 1)
@@ -84,29 +88,22 @@ auto main(int argc, char *argv[]) -> int
         exit(1);
     }
 
+    auto *main_screen = gobby->get_renderer_widget();
+    auto *tile_map_screen = new DebugWindow;
+
+    auto *central = new QWidget;
+    auto *layout = new QHBoxLayout(central);
+
+    layout->addWidget(main_screen, 0);
+    layout->addWidget(tile_map_screen, 1);
+    window.setCentralWidget(central);
+
     window.show();
-
-    //    bool cpu_running = true;
-    //    const auto frame_duration = std::chrono::duration<double, std::milli>(16.74); // Each frame is ~16.74ms
-
-    //    while (cpu_running)
-    //    {
-    //        auto frame_start = std::chrono::high_resolution_clock::now();
-    //
-    //        gobby->tick_systems();
-    //
-    //        auto frame_end = std::chrono::high_resolution_clock::now();
-    //
-    //        if (auto elapsed = frame_end - frame_start; elapsed < frame_duration)
-    //        {
-    //            std::this_thread::sleep_for(frame_duration);
-    //        }
-    //    }
 
     QTimer timer;
     QObject::connect(&timer, &QTimer::timeout, [&]() {
         gobby->tick_systems();
-        window.update();
+        tile_map_screen->set_tile_map(gobby->get_tile_map_image());
     });
     timer.start(16);
 

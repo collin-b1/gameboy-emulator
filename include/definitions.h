@@ -14,3 +14,6 @@ using i32 = int32_t;
 using i64 = int64_t;
 
 static constexpr std::array<u32, 4> pixel_colors{0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000};
+
+static constexpr auto DEBUG_TILES_PER_ROW = 16;
+static constexpr auto DEBUG_TOTAL_ROWS = 24;

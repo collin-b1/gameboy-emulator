@@ -63,11 +63,6 @@ void CPU::init_post_boot()
 
 u8 CPU::next_instruction()
 {
-    if (registers.pc == 0x2817)
-    {
-        std::cout << "Breakpoint reached." << std::endl;
-    }
-
     auto iflag = imu.get_interrupt_flag();
     auto ie = imu.get_interrupt_enable();
     auto ime = imu.get_ime();

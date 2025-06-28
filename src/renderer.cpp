@@ -65,6 +65,11 @@ void Renderer::render_frame_buffer()
     update();
 }
 
+void Renderer::blank_line(u8 y)
+{
+    std::fill_n(frame_buffer.begin() + y * 160, 160, 0);
+}
+
 void Renderer::push_pixel(const u8 x, const u8 y, const u8 color_id)
 {
     if (x >= SCREEN_WIDTH || y >= SCREEN_HEIGHT)

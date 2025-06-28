@@ -6,9 +6,9 @@
 #include <array>
 #include <memory>
 
-constexpr u8 SCREEN_WIDTH = 160;
-constexpr u8 SCREEN_HEIGHT = 144;
-constexpr u8 RENDER_SCALE = 3;
+constexpr int SCREEN_WIDTH = 160;
+constexpr int SCREEN_HEIGHT = 144;
+constexpr int RENDER_SCALE = 3;
 
 class Renderer : public QWidget
 {
@@ -18,6 +18,7 @@ public:
     //~Renderer() = default;
     void render_frame_buffer();
     void push_pixel(u8 x, u8 y, u8 color_id);
+    void blank_line(u8 y);
 
 protected:
     void paintEvent(QPaintEvent *event) override;

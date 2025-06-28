@@ -6,28 +6,28 @@ Cart::Cart() : headers(), rom(), boot_rom(), bank(0)
 {
 }
 
+bool Cart::is_boot_rom_disabled() const
+{
+    return bank != 0;
+}
+
 u8 Cart::read(const u16 addr) const
 {
-    if (addr < 0x00FF)
+    if (bank == 0 && addr < 0x0100)
     {
-        if (bank)
-        {
-            return rom[addr];
-        }
-        else
-        {
-            return boot_rom[addr];
-        }
+        return boot_rom[addr];
     }
-    if (addr == 0xFF50)
+    else if (addr == 0xFF50)
     {
         return bank;
     }
+
     return rom.at(addr);
 }
 
 void Cart::write(const u16 addr, const u8 data)
 {
+
     if (addr == 0xFF50)
     {
         bank = data;
@@ -43,11 +43,17 @@ bool Cart::load_boot_rom(std::string &path)
 {
     if (!path.empty())
     {
-        return load_buffer(path, boot_rom);
+        const auto loaded = load_buffer(path, boot_rom);
+        //        for (int i = 0x0104; i <= 0x0133; ++i)
+        //        {
+        //            std::cout << std::hex << std::uppercase << (int)rom[i] << ' ';
+        //        }
+        //        std::cout << "\n";
+        return loaded;
     }
     else
     {
-        return true;
+        return false;
     }
 }
 
@@ -66,7 +72,7 @@ bool Cart::load_header()
         checksum = checksum - rom[address] - 1;
     }
 
-    if (headers.header_checksum != checksum)
+    if (rom[0x014D] != checksum)
     {
         std::cerr << "Checksum does not match!" << std::endl;
         return false;

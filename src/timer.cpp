@@ -11,7 +11,7 @@ constexpr std::array<u16, 4> clock_increment_array{
     64,  // 0x03: 16384 Hz
 };
 
-Timer::Timer(InterruptManager &imu) : _cycles(0), div(0xABCC), tima(0), tma(0), tac(0), imu(imu)
+Timer::Timer(InterruptManager &imu) : _cycles(0), div(0 /*0xABCC*/), tima(0), tma(0), tac(0), imu(imu)
 {
 }
 

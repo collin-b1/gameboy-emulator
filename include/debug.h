@@ -7,23 +7,22 @@
 #include <QImage>
 #include <QWidget>
 
-constexpr u8 DEBUG_SCREEN_WIDTH = 256;
-constexpr u8 DEBUG_SCREEN_HEIGHT = 256;
+constexpr int DEBUG_SCREEN_WIDTH = 128;
+constexpr int DEBUG_SCREEN_HEIGHT = 192;
+constexpr int DEBUG_RENDER_SCALE = 2;
 
 class DebugWindow : public QWidget
 {
     Q_OBJECT
 public:
     explicit DebugWindow(QWidget *parent = nullptr);
-    QImage render_tile(const u8 *tile_data);
-    void bind_ppu(PPU *ppu);
-
-    // void updateRegisters(Registers &registers);
-    // void updateMemory(std::array<uint8_t, 0x8000> &memory);
+    void set_tile_map(const QImage &image);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
 
 private:
-    PPU *ppu;
+    QPoint hovered_tile = {-1, -1};
+    QImage tile_map_image;
 };

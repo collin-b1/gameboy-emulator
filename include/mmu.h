@@ -23,6 +23,7 @@ class MMU
 {
 public:
     MMU(Cart &, PPU &, InterruptManager &, Timer &);
+    bool is_boot_rom_disabled() const;
     [[nodiscard]] uint8_t bus_read(uint16_t) const;
     [[nodiscard]] uint16_t bus_read_word(uint16_t) const;
     void bus_write(uint16_t addr, uint8_t data);

@@ -70,6 +70,13 @@ u8 MMU::bus_read(u16 addr) const
         return timer.read(addr);
     }
 
+    // Interrupt flag
+    else if (addr == 0xFF0F)
+    {
+        // std::cout << "[IMU] Write 0x" << std::hex << addr << ": 0x" << static_cast<int>(data) << std::endl;
+        imu.read(addr);
+    }
+
     // Audio
     else if (addr >= 0xFF10 && addr <= 0xFF26)
     {
@@ -150,6 +157,10 @@ void MMU::bus_write(u16 addr, u8 data)
     // Video RAM (VRAM)
     else if (addr >= 0x8000 && addr <= 0x9FFF)
     {
+        //        if (addr >= 0x8000 && addr < 0x8020)
+        //        {
+        //            std::cout << "Write to VRAM " << std::hex << addr << ": " << +data << "\n";
+        //        }
         ppu.write(addr, data);
     }
 
@@ -289,6 +300,11 @@ void MMU::bus_write_word(u16 addr, u16 data)
 
     u8 msb = (data >> 8) & 0xFF;
     bus_write(addr + 1, msb);
+}
+
+bool MMU::is_boot_rom_disabled() const
+{
+    return cart.is_boot_rom_disabled();
 }
 
 bool MMU::load_rom(std::string rom_path)

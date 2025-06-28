@@ -19,6 +19,10 @@ public:
     void tick_systems();
     bool load_game(const std::string &rom, const std::string &boot_rom);
 
+    Renderer *get_renderer_widget();
+
+    QImage get_tile_map_image() const;
+
 private:
     uint64_t clock;
 

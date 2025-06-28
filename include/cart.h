@@ -82,6 +82,8 @@ public:
     bool load_rom(std::string &);
     bool load_boot_rom(std::string &);
     bool load_header();
+
+    bool is_boot_rom_disabled() const;
     [[nodiscard]] u8 read(u16) const override;
     void write(u16, u8) override;
     void print_headers() const;
