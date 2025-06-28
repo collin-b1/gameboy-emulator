@@ -67,6 +67,14 @@ u8 CPU::next_instruction()
     auto ie = imu.get_interrupt_enable();
     auto ime = imu.get_ime();
 
+    if (ime && (iflag & ie))
+    {
+        handle_interrupts();
+
+        // 6 M-cycles used for handling interrupts
+        return 6;
+    }
+
     // ie & iflag != 0 should unhalt regardless of ime
     if (is_halted)
     {
@@ -80,20 +88,14 @@ u8 CPU::next_instruction()
         }
     }
 
-    if (ime && (iflag & ie))
-    {
-        handle_interrupts();
-
-        // 6 M-cycles used for handling interrupts
-        return 6;
-    }
-
     // Handle 1-cycle delay from EI instruction
     // IME doesn't get set until END of cycle AFTER EI
-    if (ime_scheduler)
+    if (ime_scheduler > 0)
     {
-        imu.set_ime(true);
-        ime_scheduler = false;
+        if (--ime_scheduler == 0)
+        {
+            imu.set_ime(true);
+        }
     }
 
     // Fetch, decode, and execute opcode
@@ -1414,7 +1416,7 @@ void CPU::AND_A_r8(u8 &r8)
 void CPU::STOP()
 {
     // debug only
-    exit(1);
+    // exit(1);
 }
 
 void CPU::DI()
@@ -1427,7 +1429,7 @@ void CPU::DI()
 void CPU::EI()
 {
     // EI enables IME the following cycle, not immediately.
-    ime_scheduler = 1;
+    ime_scheduler = 2;
 }
 
 // LD [r16], imm8
