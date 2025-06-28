@@ -156,7 +156,7 @@ private:
     // 0xFF48 - 0xFF49: OBP0, OBP1 - Object Palette Data (non-CGB mode only)
     u8 obp0, obp1;
 
-    // 0xFF4A � 0xFF4B: WY, WX: Window Y position and (X position + 7)
+    // 0xFF4A - 0xFF4B: WY, WX: Window Y position and (X position + 7)
     // Window will be visible if wx in [0, 166] and wy in [0, 143]
     u8 wy, wx;
 
