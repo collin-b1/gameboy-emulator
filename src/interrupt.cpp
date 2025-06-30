@@ -1,7 +1,7 @@
 #include "interrupt.h"
 #include <iostream>
 
-InterruptManager::InterruptManager() : ime{false}, ie{0}, iflag{0xE1}
+InterruptManager::InterruptManager() : ime{0}, ie{0}, iflag{0}
 {
 }
 
@@ -49,6 +49,9 @@ void InterruptManager::set_ime(bool enabled)
 
 void InterruptManager::request_interrupt(InterruptSource source)
 {
+    if (source != InterruptSource::INTERRUPT_VBLANK)
+        std::cout << "INT :: " << source << std::endl;
+
     switch (source)
     {
     case INTERRUPT_VBLANK:

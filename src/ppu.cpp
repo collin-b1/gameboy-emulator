@@ -3,20 +3,13 @@
 
 #include <iostream>
 
-enum PPUMode : u8
-{
-    MODE_HBLANK = 0,
-    MODE_VBLANK = 1,
-    MODE_OAM_SEARCH = 2,
-    MODE_VRAM = 3
-};
-
 PPU::PPU(InterruptManager &imu, QObject *parent)
     : QObject(parent)
     , frame_buffer{}
     , imu(imu)
     , mmu(nullptr)
     , mode_clock(0)
+    , last_mode(PPUMode::MODE_OAM_SEARCH)
     , window_line_y(0)
     , visible_sprites()
     , visible_sprite_count(0)
@@ -250,6 +243,24 @@ u8 PPU::get_viewport_x() const
     return (scx + 159) % 256;
 }
 
+void PPU::increment_ly()
+{
+    ++ly;
+
+    if (lcdc.window_enable && ly >= wy && ly < SCREEN_HEIGHT && wx < 166)
+    {
+        ++window_line_y;
+    }
+
+    auto was_lyc_ly_true = stat.lyc_ly_comparison;
+    stat.lyc_ly_comparison = (ly == lyc);
+
+    if (!was_lyc_ly_true && stat.lyc_ly_comparison && stat.lyc_int_select)
+    {
+        imu.request_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
+    }
+}
+
 void PPU::tick(const u16 cycles)
 {
     if (!lcdc.lcd_ppu_enable)
@@ -292,7 +303,9 @@ void PPU::tick(const u16 cycles)
         if (mode_clock >= 172)
         {
             mode_clock %= 172;
+
             render_scanline();
+
             stat.ppu_mode = MODE_HBLANK;
         }
         break;
@@ -302,12 +315,7 @@ void PPU::tick(const u16 cycles)
         {
             mode_clock %= 204;
 
-            ++ly;
-
-            if (lcdc.window_enable && ly >= wy && ly < SCREEN_HEIGHT && wx < 166)
-            {
-                ++window_line_y;
-            }
+            increment_ly();
 
             if (ly == 144)
             {
@@ -325,7 +333,7 @@ void PPU::tick(const u16 cycles)
         if (mode_clock >= 456)
         {
             mode_clock %= 456;
-            ++ly;
+            increment_ly();
 
             if (ly == 154)
             {
@@ -336,6 +344,29 @@ void PPU::tick(const u16 cycles)
             }
         }
         break;
+    }
+
+    if (stat.ppu_mode != last_mode)
+    {
+        switch (stat.ppu_mode)
+        {
+        case MODE_HBLANK:
+            if (stat.mode_0_int_select)
+                imu.request_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
+            break;
+        case MODE_VBLANK:
+            if (stat.mode_1_int_select)
+                imu.request_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
+            break;
+        case MODE_OAM_SEARCH:
+            if (stat.mode_2_int_select)
+                imu.request_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
+            break;
+        default:
+            break;
+        }
+
+        last_mode = static_cast<PPUMode>(stat.ppu_mode);
     }
 }
 
@@ -409,10 +440,6 @@ Object PPU::get_object_from_oam(u8 idx)
 
 void PPU::render_scanline()
 {
-    if (ly >= SCREEN_HEIGHT)
-    {
-        return;
-    }
 
     const auto bg_enabled = lcdc.bg_window_enable_priority;
 
@@ -446,6 +473,11 @@ void PPU::render_scanline()
         }
         else // Background
         {
+            if (ly >= SCREEN_HEIGHT)
+            {
+                return;
+            }
+
             const auto pixel_x = (x + scx) % 256;
             const auto pixel_y = (ly + scy) % 256;
 

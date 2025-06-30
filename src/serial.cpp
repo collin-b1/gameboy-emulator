@@ -31,7 +31,7 @@ void Serial::write(u16 addr, u8 data)
         sc = data;
         if (sc & 0x80)
         {
-            std::cout << sb;
+            // std::cout << sb;
             sc &= ~0x80;
         }
         break;

@@ -72,30 +72,7 @@ void CPU::init_post_boot()
 
 u8 CPU::next_instruction()
 {
-    auto iflag = imu.get_interrupt_flag();
-    auto ie = imu.get_interrupt_enable();
-    auto ime = imu.get_ime();
-
-    if (ime && (iflag & ie))
-    {
-        handle_interrupts();
-
-        // 6 M-cycles used for handling interrupts
-        return 6;
-    }
-
-    // ie & iflag != 0 should unhalt regardless of ime
-    if (is_halted)
-    {
-        if (ime || (ie & iflag))
-        {
-            is_halted = false;
-        }
-        else
-        {
-            return 1;
-        }
-    }
+    handle_interrupts();
 
     // Fetch, decode, and execute opcode
     auto opcode = mmu.bus_read(registers.pc++);
@@ -121,10 +98,25 @@ void CPU::handle_interrupts()
 {
     const auto iflag = imu.get_interrupt_flag();
     const auto ie = imu.get_interrupt_enable();
+    const auto interrupts = ie & iflag;
+
     const auto ime = imu.get_ime();
 
-    if (!ime)
+    if (!interrupts)
+    {
         return;
+    }
+
+    // ie & iflag != 0 should unhalt regardless of ime
+    if (is_halted)
+    {
+        is_halted = false;
+    }
+
+    if (!ime)
+    {
+        return;
+    }
 
     if (iflag & ie & 0x1)
     {

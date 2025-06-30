@@ -41,6 +41,14 @@ struct Object
     } flags;
 };
 
+enum PPUMode : u8
+{
+    MODE_HBLANK = 0,
+    MODE_VBLANK = 1,
+    MODE_OAM_SEARCH = 2,
+    MODE_VRAM = 3
+};
+
 class MMU;
 
 class PPU final : public QObject, public IMemory
@@ -72,6 +80,7 @@ public:
     void blank_line(u8 y);
 
     void tick(u16);
+    void increment_ly();
     void dma_transfer(u8);
     void render_scanline();
     void draw_frame();
@@ -87,6 +96,7 @@ private:
     MMU *mmu;
     InterruptManager &imu;
 
+    PPUMode last_mode;
     u32 mode_clock;
 
     u8 window_line_y;
