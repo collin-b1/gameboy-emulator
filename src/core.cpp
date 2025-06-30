@@ -36,9 +36,14 @@ bool GameboyCore::load_rom(const std::string &rom_path)
     bool rom_loaded = cart.load_rom(rom_path);
     bool boot_rom_loaded = cart.load_boot_rom(boot_rom_path);
 
-    if (!rom_loaded || !boot_rom_loaded)
+    if (!rom_loaded)
     {
         return false;
+    }
+
+    if (!boot_rom_loaded)
+    {
+        cpu.init_post_boot();
     }
 
     cart.print_headers();

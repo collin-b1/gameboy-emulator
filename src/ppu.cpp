@@ -22,16 +22,16 @@ PPU::PPU(InterruptManager &imu, QObject *parent)
     , visible_sprite_count(0)
     , vram()
     , oam()
-    , lcdc(0)
+    , lcdc(0x91)
     , stat(0)
     , scy(0)
     , scx(0)
     , ly(0)
     , lyc(0)
     , dma(0)
-    , bgp(0)
-    , obp0(0)
-    , obp1(0)
+    , bgp(0xFC)
+    , obp0(0xFF)
+    , obp1(0xFF)
     , wy(0)
     , wx(0)
     , key1(0)
@@ -336,12 +336,6 @@ void PPU::tick(const u16 cycles)
         }
         break;
     }
-
-    // TODO: Figure out why this makes screen scroll rapidly
-    //    if ((ly == lyc) && stat.lyc_int_select)
-    //    {
-    //        imu.request_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
-    //    }
 }
 
 void PPU::dma_transfer(u8 source_byte)
@@ -361,7 +355,7 @@ const u8 *PPU::get_tile_data(u8 idx) const
     else
     {
         // 0x9000 is base pointer, index is signed
-        int8_t signed_idx = static_cast<int8_t>(idx);
+        auto signed_idx = static_cast<int8_t>(idx);
         const u16 base_addr = 0x9000 + signed_idx * 16;
         return &vram[base_addr - VRAM_START];
     }

@@ -5,8 +5,7 @@
 
 // Unprefixed
 constexpr std::array<u8, 256> timings_u{
-    // clang-format off
-//  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+    //  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
     1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1, // 0x00
     1, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1, // 0x10
     2, 3, 2, 2, 1, 1, 2, 1, 2, 2, 2, 2, 1, 1, 2, 1, // 0x20
@@ -27,8 +26,7 @@ constexpr std::array<u8, 256> timings_u{
 
 // 0xCB Prefixed
 constexpr std::array<u8, 256> timings_cb{
-    // clang-format off
-//  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+    //  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0x00
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0x10
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0x20
@@ -55,12 +53,21 @@ CPU::CPU(MMU &mmu, InterruptManager &imu)
 // Set registers to post-bootrom values
 void CPU::init_post_boot()
 {
-    registers.af.word = 0x01B0;
+    registers.af.word = 0x0100;
     registers.bc.word = 0x0013;
     registers.de.word = 0x00D8;
     registers.hl.word = 0x014D;
     registers.sp = 0xFFFE;
     registers.pc = 0x0100;
+
+    registers.set_zero_flag(1);
+
+    auto checksum_is_zero = mmu.bus_read(0x014D) ? 1 : 0;
+    registers.set_carry_flag(checksum_is_zero);
+    registers.set_half_carry_flag(checksum_is_zero);
+
+    // Disable boot rom
+    mmu.bus_write(0xFF50, 0x01);
 }
 
 u8 CPU::next_instruction()
