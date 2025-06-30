@@ -1,5 +1,4 @@
 #include "cart.h"
-#include <fstream>
 #include <iostream>
 
 Cart::Cart() : headers(), rom(), boot_rom(), bank(0), boot_rom_disabled(false)
@@ -15,7 +14,7 @@ u8 Cart::read(const u16 addr) const
 {
     if (!boot_rom_disabled && addr < 0x0100)
     {
-        return boot_rom[addr];
+        return boot_rom.at(addr);
     }
     else if (addr == 0xFF50)
     {
@@ -30,7 +29,7 @@ void Cart::write(const u16 addr, const u8 data)
 
     if (addr == 0xFF50)
     {
-        boot_rom_disabled = !!data;
+        boot_rom_disabled = data;
     }
     else
     {
@@ -59,7 +58,10 @@ bool Cart::load_boot_rom(const std::string &path)
 
 bool Cart::load_rom(const std::string &path)
 {
-    return load_buffer(path, rom);
+    if (load_buffer(path, rom))
+    {
+        return load_header();
+    }
 }
 
 bool Cart::load_header()
@@ -76,6 +78,10 @@ bool Cart::load_header()
     {
         std::cerr << "Checksum does not match!" << std::endl;
         return false;
+    }
+    else
+    {
+        std::cout << "ROM Checksum matches." << std::endl;
     }
 
     return true;

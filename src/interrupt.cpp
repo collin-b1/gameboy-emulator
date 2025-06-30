@@ -10,13 +10,13 @@ u8 InterruptManager::read(u16 addr) const
     switch (addr)
     {
     case 0xFF0F:
-        return 0xE0 | iflag.iflag; // Only lower 5 bits are readible, upper 3 return 1.
+        return 0xE0 | iflag.iflag; // Only lower 5 bits are readable, upper 3 return 1.
 
     case 0xFFFF:
         return ie.ie;
 
     default:
-        return 0;
+        return 0xFF;
     }
 }
 

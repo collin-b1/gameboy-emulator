@@ -97,19 +97,20 @@ u8 CPU::next_instruction()
         }
     }
 
+    // Fetch, decode, and execute opcode
+    auto opcode = mmu.bus_read(registers.pc++);
+    auto cycles = execute_opcode(opcode);
+
     // Handle 1-cycle delay from EI instruction
     // IME doesn't get set until END of cycle AFTER EI
     if (ime_scheduler > 0)
     {
-        if (--ime_scheduler == 0)
+        ime_scheduler--;
+        if (ime_scheduler == 0)
         {
             imu.set_ime(true);
         }
     }
-
-    // Fetch, decode, and execute opcode
-    auto opcode = mmu.bus_read(registers.pc++);
-    auto cycles = execute_opcode(opcode);
 
     // debug_print();
 
@@ -1438,7 +1439,7 @@ void CPU::DI()
 void CPU::EI()
 {
     // EI enables IME the following cycle, not immediately.
-    ime_scheduler = 2;
+    ime_scheduler = 1;
 }
 
 // LD [r16], imm8

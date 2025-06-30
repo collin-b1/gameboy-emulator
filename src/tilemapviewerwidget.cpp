@@ -69,4 +69,13 @@ void TileMapViewerWidget::mouseMoveEvent(QMouseEvent *event)
         hovered_tile = QPoint(-1, -1);
         update();
     }
+
+    QWidget::mouseMoveEvent(event);
+}
+
+void TileMapViewerWidget::leaveEvent(QEvent *event)
+{
+    hovered_tile = QPoint(-1, -1);
+    update();
+    QWidget::leaveEvent(event);
 }

@@ -104,7 +104,7 @@ public:
         rom_file.read(reinterpret_cast<char *>(buffer.data()), buffer.size());
         rom_file.close();
 
-        return load_header();
+        return true;
     }
 
 private:

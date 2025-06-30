@@ -19,6 +19,7 @@ public slots:
 protected:
     void paintEvent(QPaintEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
+    void leaveEvent(QEvent *event) override;
 
 private:
     std::array<u32, TILE_MAP_SIZE> tile_map_buffer;

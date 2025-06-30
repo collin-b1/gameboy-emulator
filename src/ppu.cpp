@@ -112,10 +112,10 @@ u8 PPU::read(u16 addr) const
         if (addr >= VRAM_START && addr <= VRAM_END)
         {
             // VRAM is only accessible during Modes 0-2
-            if (stat.ppu_mode == MODE_VRAM && lcdc.lcd_ppu_enable)
-            {
-                return 0xFF;
-            }
+            //            if (stat.ppu_mode == MODE_VRAM /* && lcdc.lcd_ppu_enable*/)
+            //            {
+            //                return 0xFF;
+            //            }
             return vram[addr - VRAM_START];
         }
         else if (addr >= OAM_START && addr <= OAM_END)
@@ -220,10 +220,11 @@ void PPU::write(u16 addr, u8 data)
         if (addr >= VRAM_START && addr <= VRAM_END)
         {
             // VRAM is only accessible during Modes 0-2
-            if (stat.ppu_mode == MODE_VRAM && lcdc.lcd_ppu_enable)
-            {
-                return;
-            }
+            //            if (stat.ppu_mode == MODE_VRAM /* && lcdc.lcd_ppu_enable*/)
+            //            {
+            //                return;
+            //            }
+            //            std::cout << "VRAM write @ " << std::hex << addr << " = " << std::hex << (int)data << "\n";
             vram[addr - VRAM_START] = data;
         }
         else if (addr >= OAM_START && addr <= OAM_END)

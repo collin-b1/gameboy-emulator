@@ -6,6 +6,11 @@
 #include <cstdint>
 #include <string>
 
+struct Instruction
+{
+    std::string mneumonic;
+};
+
 class CPU
 {
 public:

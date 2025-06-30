@@ -42,7 +42,7 @@ private:
             u8 timer_req : 1;
             u8 serial_req : 1;
             u8 joypad_req : 1;
-            u8 _unused : 3;
+            u8 : 3;
         };
     } iflag;
 
@@ -56,7 +56,7 @@ private:
             u8 timer : 1;
             u8 serial : 1;
             u8 joypad : 1;
-            u8 _unused : 3;
+            u8 : 3;
         };
     } ie;
 };
