@@ -66,6 +66,12 @@ void MainWindow::dropEvent(QDropEvent *event)
     }
 }
 
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    QApplication::quit();
+    QMainWindow::closeEvent(event); // or QWidget::closeEvent(event);
+};
+
 void MainWindow::on_load_rom_clicked()
 {
     QString file_path = QFileDialog::getOpenFileName(this, tr("Load ROM"), "", tr("Gameboy ROMs (*.gb)"));

@@ -7,7 +7,7 @@
 
 EmulatorApp::EmulatorApp(QObject *parent) : QObject(parent)
 {
-    core = new GameboyCore(this);
+    core = nullptr;
     main_window = new MainWindow();
     debug_window = new DebugWindow();
 
@@ -36,6 +36,9 @@ void EmulatorApp::tick()
 
 void EmulatorApp::on_rom_loaded(const QString &path)
 {
+    delete core;
+    core = new GameboyCore(this);
+
     if (!core->load_rom(path.toStdString()))
     {
         QMessageBox::warning(nullptr, tr("Error"), tr("Failed to load ROM file"));
