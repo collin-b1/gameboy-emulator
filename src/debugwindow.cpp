@@ -12,7 +12,7 @@ DebugWindow::DebugWindow(QWidget *parent) : QWidget(parent)
 
     // Tile Map Viewer
     tile_map_viewer = new TileMapViewerWidget(this);
-    tabs->addTab(tile_map_viewer, "Tile Map Viewer");
+    tabs->addTab(tile_map_viewer, "Tile Map");
 
     layout->addWidget(tabs);
 
