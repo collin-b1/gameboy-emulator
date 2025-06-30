@@ -1,16 +1,16 @@
 #pragma once
 
-#include <QImage>
+#include <QObject>
 #include <array>
 #include <cstdint>
 
 #include "definitions.h"
 #include "interrupt.h"
 #include "memory.h"
-#include "renderer.h"
 
 constexpr u16 VRAM_START = 0x8000;
 constexpr u16 VRAM_END = 0x9FFF;
+constexpr u16 VRAM_SIZE = VRAM_END - VRAM_START + 1;
 
 constexpr u16 OAM_START = 0xFE00;
 constexpr u16 OAM_END = 0xFE9F;
@@ -43,10 +43,12 @@ struct Object
 
 class MMU;
 
-class PPU final : public IMemory
+class PPU final : public QObject, public IMemory
 {
+    Q_OBJECT
+
 public:
-    PPU(InterruptManager &imu, Renderer &renderer);
+    explicit PPU(InterruptManager &imu, QObject *parent = nullptr);
 
     void bind_mmu(MMU *_mmu);
 
@@ -63,17 +65,27 @@ public:
     [[nodiscard]] Object get_object_from_oam(u8);
     [[nodiscard]] const u8 *get_tile_data(u8) const;
     [[nodiscard]] u8 get_color_id_from_tile(u8 tile, u8 x, u8 y) const;
-    QImage generate_tile_map() const;
+    void load_tile_map_buffer();
+
+    // Frame buffer operations
+    void push_pixel(u8 x, u8 y, u8 color_id);
+    void blank_line(u8 y);
 
     void tick(u16);
     void dma_transfer(u8);
     void render_scanline();
     void draw_frame();
 
+signals:
+    void frame_ready(const std::array<u32, SCREEN_SIZE> &frame_buffer);
+    void tile_map_ready(const std::array<u32, TILE_MAP_SIZE> &tile_map_buffer);
+
 private:
+    std::array<u32, SCREEN_SIZE> frame_buffer;
+    std::array<u32, TILE_MAP_SIZE> tile_map_buffer;
+
     MMU *mmu;
     InterruptManager &imu;
-    Renderer &renderer;
 
     u32 mode_clock;
 

@@ -1,0 +1,52 @@
+#include "core.h"
+
+GameboyCore::GameboyCore(QObject *parent)
+    : QObject(parent)
+    , clock(0)
+    , cart{}
+    , interrupts{}
+    , timer{interrupts}
+    , ppu{interrupts}
+    , mmu{cart, ppu, interrupts, timer}
+    , cpu{mmu, interrupts}
+{
+    ppu.bind_mmu(&mmu);
+}
+
+void GameboyCore::tick_systems()
+{
+    unsigned int cycles{0};
+    while (cycles < CYCLES_PER_FRAME)
+    {
+        const u8 cpu_cycles = cpu.next_instruction();
+        cycles += cpu_cycles;
+
+        // Timer tick
+        timer.tick(cpu_cycles);
+
+        // PPU tick
+        ppu.tick(cpu_cycles);
+    }
+}
+
+bool GameboyCore::load_rom(const std::string &rom_path)
+{
+    std::string boot_rom_path{R"(roms\dmg_boot.bin)"};
+
+    bool rom_loaded = cart.load_rom(rom_path);
+    bool boot_rom_loaded = cart.load_boot_rom(boot_rom_path);
+
+    if (!rom_loaded || !boot_rom_loaded)
+    {
+        return false;
+    }
+
+    cart.print_headers();
+
+    return true;
+}
+
+const PPU *GameboyCore::get_ppu() const
+{
+    return &ppu;
+}

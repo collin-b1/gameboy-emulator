@@ -15,5 +15,14 @@ using i64 = int64_t;
 
 static constexpr std::array<u32, 4> pixel_colors{0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000};
 
-static constexpr auto DEBUG_TILES_PER_ROW = 16;
-static constexpr auto DEBUG_TOTAL_ROWS = 24;
+constexpr int SCREEN_WIDTH = 160;
+constexpr int SCREEN_HEIGHT = 144;
+constexpr int SCREEN_SIZE = SCREEN_WIDTH * SCREEN_HEIGHT;
+
+static constexpr auto TILE_MAP_TILES_PER_ROW = 16;
+static constexpr auto TILE_MAP_TOTAL_ROWS = 24;
+
+static constexpr auto TILE_MAP_WIDTH = 8 * TILE_MAP_TILES_PER_ROW;
+static constexpr auto TILE_MAP_HEIGHT = 8 * TILE_MAP_TOTAL_ROWS;
+
+static constexpr auto TILE_MAP_SIZE = TILE_MAP_WIDTH * TILE_MAP_HEIGHT;

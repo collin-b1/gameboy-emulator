@@ -39,10 +39,3 @@ target_link_libraries(${PROJECT_NAME}
         Qt6::Gui
         Qt6::Widgets
 )
-
-target_compile_definitions(Gobby PRIVATE ROMS_DIRECTORY="\"roms/\"")
-add_custom_command(TARGET Gobby POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_SOURCE_DIR}/assets/roms"
-        "$<TARGET_FILE_DIR:Gobby>/roms"
-)

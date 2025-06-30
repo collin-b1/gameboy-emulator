@@ -11,10 +11,11 @@ enum PPUMode : u8
     MODE_VRAM = 3
 };
 
-PPU::PPU(InterruptManager &imu, Renderer &renderer)
-    : imu(imu)
+PPU::PPU(InterruptManager &imu, QObject *parent)
+    : QObject(parent)
+    , frame_buffer{}
+    , imu(imu)
     , mmu(nullptr)
-    , renderer(renderer)
     , mode_clock(0)
     , window_line_y(0)
     , visible_sprites()
@@ -45,6 +46,10 @@ PPU::PPU(InterruptManager &imu, Renderer &renderer)
     , ocps(0)
     , ocpd(0)
 {
+    // Zero out frame buffers
+    frame_buffer.fill(pixel_colors.at(0));
+    tile_map_buffer.fill(pixel_colors.at(0));
+
     stat.ppu_mode = MODE_OAM_SEARCH;
 }
 
@@ -418,7 +423,7 @@ void PPU::render_scanline()
 
     if (!bg_enabled)
     {
-        renderer.blank_line(ly);
+        blank_line(ly);
         return;
     }
 
@@ -514,13 +519,29 @@ void PPU::render_scanline()
             break;
         }
 
-        renderer.push_pixel(x, ly, final_pixel_color);
+        push_pixel(x, ly, final_pixel_color);
     }
 }
 
 void PPU::draw_frame()
 {
-    renderer.render_frame_buffer();
+    // Load tile map buffer
+    load_tile_map_buffer();
+
+    emit frame_ready(frame_buffer);
+    emit tile_map_ready(tile_map_buffer);
+}
+
+void PPU::blank_line(u8 y)
+{
+    std::fill_n(frame_buffer.begin() + y * 160, 160, 0);
+}
+
+void PPU::push_pixel(const u8 x, const u8 y, const u8 color_id)
+{
+    if (x >= SCREEN_WIDTH || y >= SCREEN_HEIGHT)
+        return;
+    frame_buffer[y * SCREEN_WIDTH + x] = pixel_colors[color_id & 0x3];
 }
 
 u8 PPU::get_color_id_from_tile(u8 tile, u8 x, u8 y) const
@@ -535,33 +556,30 @@ u8 PPU::get_color_id_from_tile(u8 tile, u8 x, u8 y) const
     return color_id;
 }
 
-QImage PPU::generate_tile_map() const
+void PPU::load_tile_map_buffer()
 {
-
-    QImage img(8 * DEBUG_TILES_PER_ROW, 8 * DEBUG_TOTAL_ROWS, QImage::Format_RGB888);
-    img.fill(Qt::black);
-
-    for (int tile_idx = 0; tile_idx < DEBUG_TILES_PER_ROW * DEBUG_TOTAL_ROWS; ++tile_idx)
+    for (int tile_y = 0; tile_y < TILE_MAP_TOTAL_ROWS; ++tile_y)
     {
-        const u8 tile_x = (tile_idx % DEBUG_TILES_PER_ROW) * 8;
-        const u8 tile_y = (tile_idx / DEBUG_TILES_PER_ROW) * 8;
-
-        for (int y = 0; y < 8; ++y)
+        for (int tile_x = 0; tile_x < TILE_MAP_TILES_PER_ROW; ++tile_x)
         {
-            for (int x = 0; x < 8; ++x)
+            for (int y = 0; y < 8; ++y)
             {
-                const auto tile_data = &vram[tile_idx * 16];
+                for (int x = 0; x < 8; ++x)
+                {
+                    const auto tile_idx = tile_y * TILE_MAP_TILES_PER_ROW + tile_x;
+                    const auto tile_data = &vram[tile_idx * 16];
 
-                const auto tile_upper = *(tile_data + 2 * y);
-                const auto tile_lower = *(tile_data + 2 * y + 1);
+                    const auto tile_upper = *(tile_data + 2 * y);
+                    const auto tile_lower = *(tile_data + 2 * y + 1);
 
-                const auto color_id = ((tile_upper >> (7 - x)) & 0x1) | (((tile_lower >> (7 - x)) & 0x1) << 1);
-                const auto tile_pixel_color = (bgp.bgp >> (color_id * 2)) & 0x3;
+                    const auto color_id = ((tile_upper >> (7 - x)) & 0x1) | (((tile_lower >> (7 - x)) & 0x1) << 1);
+                    const auto tile_pixel_color = (bgp.bgp >> (color_id * 2)) & 0x3;
 
-                img.setPixelColor(tile_x + x, tile_y + y, pixel_colors[tile_pixel_color]);
+                    const auto pixel_x = tile_x * 8 + x;
+                    const auto pixel_y = tile_y * 8 + y;
+                    tile_map_buffer[pixel_y * TILE_MAP_WIDTH + pixel_x] = pixel_colors[tile_pixel_color];
+                }
             }
         }
     }
-
-    return img;
 }

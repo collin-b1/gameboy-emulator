@@ -1,8 +1,9 @@
-# Gameboy Emulator
+# GameboyCore Emulator
 
-Simple Gameboy emulator written in C++
+Simple GameboyCore emulator written in C++
 
 ## Compiling
+
 ```bash
 $ git clone https://github.com/collin-b1/gameboy-emulator.git
 $ cd gameboy-emulator/

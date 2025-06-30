@@ -79,8 +79,8 @@ class Cart final : public IMemory
 public:
     Cart();
 
-    bool load_rom(std::string &);
-    bool load_boot_rom(std::string &);
+    bool load_rom(const std::string &);
+    bool load_boot_rom(const std::string &);
     bool load_header();
 
     bool is_boot_rom_disabled() const;
@@ -89,7 +89,7 @@ public:
     void print_headers() const;
 
     // Load buffer from file to an std::array
-    template <typename T, size_t N> bool load_buffer(std::string &path, std::array<T, N> &buffer)
+    template <typename T, size_t N> bool load_buffer(const std::string &path, std::array<T, N> &buffer)
     {
         std::ifstream rom_file;
         rom_file.open(path, std::ios::binary);
