@@ -2,24 +2,24 @@
 #include <fstream>
 #include <iostream>
 
-Cart::Cart() : headers(), rom(), boot_rom(), bank(0)
+Cart::Cart() : headers(), rom(), boot_rom(), bank(0), boot_rom_disabled(false)
 {
 }
 
 bool Cart::is_boot_rom_disabled() const
 {
-    return bank != 0;
+    return boot_rom_disabled;
 }
 
 u8 Cart::read(const u16 addr) const
 {
-    if (bank == 0 && addr < 0x0100)
+    if (!boot_rom_disabled && addr < 0x0100)
     {
         return boot_rom[addr];
     }
     else if (addr == 0xFF50)
     {
-        return bank;
+        return 0;
     }
 
     return rom.at(addr);
@@ -30,7 +30,7 @@ void Cart::write(const u16 addr, const u8 data)
 
     if (addr == 0xFF50)
     {
-        bank = data;
+        boot_rom_disabled = !!data;
     }
     else
     {

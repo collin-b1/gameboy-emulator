@@ -46,7 +46,7 @@ constexpr std::array<u8, 256> timings_cb{
 };
 
 CPU::CPU(MMU &mmu, InterruptManager &imu)
-    : registers(), opcode(0), mmu(mmu), imu(imu), ime_scheduler(false), is_halted(false), is_stopped(false)
+    : registers{}, opcode(0), mmu(mmu), imu(imu), ime_scheduler(false), is_halted(false), is_stopped(false)
 {
 }
 

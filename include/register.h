@@ -2,12 +2,12 @@
 #include "definitions.h"
 
 union Register {
-    u16 word;
     struct
     {
         u8 lsb;
         u8 msb;
     };
+    u16 word;
 
     // Operator overloads
     Register &operator=(const u16 &value)

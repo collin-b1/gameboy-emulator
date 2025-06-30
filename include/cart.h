@@ -113,4 +113,5 @@ private:
     std::array<u8, ROM_END - ROM_START + 1> rom;
     std::array<u8, BOOT_ROM_SIZE> boot_rom;
     u8 bank;
+    bool boot_rom_disabled;
 };
