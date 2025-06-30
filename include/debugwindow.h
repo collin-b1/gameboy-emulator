@@ -1,6 +1,7 @@
 #pragma once
 
 #include "QWidget"
+#include "instructionviewerwidget.h"
 #include "tilemapviewerwidget.h"
 
 class DebugWindow : public QWidget
@@ -12,4 +13,5 @@ public:
 
 private:
     TileMapViewerWidget *tile_map_viewer;
+    InstructionViewerWidget *instruction_viewer;
 };

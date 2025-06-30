@@ -1,6 +1,5 @@
 #include "debugwindow.h"
 #include "definitions.h"
-#include "tilemapviewerwidget.h"
 #include <QTabWidget>
 #include <QVBoxLayout>
 
@@ -14,11 +13,13 @@ DebugWindow::DebugWindow(QWidget *parent) : QWidget(parent)
     tile_map_viewer = new TileMapViewerWidget(this);
     tabs->addTab(tile_map_viewer, "Tile Map");
 
-    layout->addWidget(tabs);
+    // Instructions Viewer
+    instruction_viewer = new InstructionViewerWidget(this);
+    tabs->addTab(instruction_viewer, "Instructions");
 
+    layout->addWidget(tabs);
     setLayout(layout);
     setWindowTitle("Gobby Debug Tools");
-    // setMinimumSize(DEBUG_SCREEN_WIDTH * DEBUG_RENDER_SCALE, DEBUG_SCREEN_HEIGHT * DEBUG_RENDER_SCALE);
 }
 
 TileMapViewerWidget *DebugWindow::get_tile_map_viewer()

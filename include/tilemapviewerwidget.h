@@ -1,15 +1,11 @@
 #pragma once
 
 #include "definitions.h"
-
 #include "ppu.h"
 #include "register.h"
 #include <QImage>
+#include <QObject>
 #include <QWidget>
-
-constexpr int DEBUG_SCREEN_WIDTH = 128;
-constexpr int DEBUG_SCREEN_HEIGHT = 192;
-constexpr int DEBUG_RENDER_SCALE = 2;
 
 class TileMapViewerWidget : public QWidget
 {
