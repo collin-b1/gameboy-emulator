@@ -5,6 +5,7 @@
 #include <QFileDialog>
 #include <QMainWindow>
 #include <QMenuBar>
+#include <QMimeData>
 #include <QVBoxLayout>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
@@ -25,6 +26,44 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
     central->setLayout(layout);
     setCentralWidget(central);
+
+    // Allow dragging and dropping files onto the window (ROMs)
+    setAcceptDrops(true);
+}
+
+void MainWindow::dragEnterEvent(QDragEnterEvent *event)
+{
+    const auto urls = event->mimeData()->urls();
+    if (event->mimeData()->hasUrls() && urls.size() == 1)
+    {
+        event->acceptProposedAction();
+    }
+    else
+    {
+        event->ignore();
+    }
+}
+
+void MainWindow::dropEvent(QDropEvent *event)
+{
+    const auto urls = event->mimeData()->urls();
+    if (urls.size() == 1)
+    {
+        QString file_path = urls[0].toLocalFile();
+        QFileInfo file_info(file_path);
+        QString file_ext = file_info.suffix().toLower();
+
+        if (file_ext == "gb")
+        {
+            emit rom_loaded(file_path);
+
+            event->acceptProposedAction();
+        }
+        else
+        {
+            event->ignore();
+        }
+    }
 }
 
 void MainWindow::on_load_rom_clicked()
