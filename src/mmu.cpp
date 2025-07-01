@@ -74,7 +74,7 @@ u8 MMU::bus_read(u16 addr) const
     else if (addr == 0xFF0F)
     {
         // std::cout << "[IMU] Write 0x" << std::hex << addr << ": 0x" << static_cast<int>(data) << std::endl;
-        imu.read(addr);
+        return imu.read(addr);
     }
 
     // Audio

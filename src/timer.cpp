@@ -22,7 +22,7 @@ std::string Timer::get_state() const
 
 void Timer::tick(u16 cycles)
 {
-    div += static_cast<u16>(cycles);
+    div += cycles;
 
     if (tac & 0x04)
     {
