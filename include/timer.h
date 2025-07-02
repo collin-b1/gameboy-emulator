@@ -15,9 +15,13 @@ public:
     void write(u16, u8) override;
     void tick(u16) override;
     [[nodiscard]] std::string get_state() const;
+    void stop_div(bool);
 
 private:
-    uint64_t _cycles;
+    u64 _cycles;
+
+    // DIV stops when CPU is in stopped mode
+    bool _div_stopped;
 
     InterruptManager &imu;
 

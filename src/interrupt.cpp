@@ -49,9 +49,6 @@ void InterruptManager::set_ime(bool enabled)
 
 void InterruptManager::request_interrupt(InterruptSource source)
 {
-    if (source != InterruptSource::INTERRUPT_VBLANK)
-        std::cout << "INT :: " << source << std::endl;
-
     switch (source)
     {
     case INTERRUPT_VBLANK:

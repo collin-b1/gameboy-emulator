@@ -53,7 +53,7 @@ void MainWindow::dropEvent(QDropEvent *event)
         QFileInfo file_info(file_path);
         QString file_ext = file_info.suffix().toLower();
 
-        if (file_ext == "gb")
+        if (file_ext == "gb" || file_ext == "gbc")
         {
             emit rom_loaded(file_path);
 
@@ -74,7 +74,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::on_load_rom_clicked()
 {
-    QString file_path = QFileDialog::getOpenFileName(this, tr("Load ROM"), "", tr("Gameboy ROMs (*.gb)"));
+    QString file_path = QFileDialog::getOpenFileName(this, tr("Load ROM"), "", tr("Gameboy ROMs (*.gb,*.gbc)"));
     if (!file_path.isEmpty())
     {
         emit rom_loaded(file_path);

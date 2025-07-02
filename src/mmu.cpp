@@ -321,3 +321,7 @@ bool MMU::load_rom(std::string rom_path)
 {
     return cart.load_rom(rom_path);
 }
+void MMU::stop_div(bool stopped)
+{
+    timer.stop_div(stopped);
+}

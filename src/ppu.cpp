@@ -70,7 +70,7 @@ u8 PPU::read(u16 addr) const
     case 0xFF46:
         return dma;
     case 0xFF47:
-        return bgp.bgp;
+        return bgp;
     case 0xFF48:
         return obp0;
     case 0xFF49:
@@ -162,7 +162,7 @@ void PPU::write(u16 addr, u8 data)
         break;
     }
     case 0xFF47:
-        bgp.bgp = data;
+        bgp = data;
         break;
     case 0xFF48:
         obp0 = data;
@@ -243,31 +243,16 @@ u8 PPU::get_viewport_x() const
     return (scx + 159) % 256;
 }
 
-void PPU::increment_ly()
-{
-    ++ly;
-
-    if (lcdc.window_enable && ly >= wy && ly < SCREEN_HEIGHT && wx < 166)
-    {
-        ++window_line_y;
-    }
-
-    auto was_lyc_ly_true = stat.lyc_ly_comparison;
-    stat.lyc_ly_comparison = (ly == lyc);
-
-    if (!was_lyc_ly_true && stat.lyc_ly_comparison && stat.lyc_int_select)
-    {
-        imu.request_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
-    }
-}
-
 void PPU::tick(const u16 cycles)
 {
     if (!lcdc.lcd_ppu_enable)
     {
-        //        mode_clock = 0;
-        //        ly = 0;
-        //        stat.ppu_mode = MODE_HBLANK;
+        mode_clock = 0;
+        ly = 0;
+        window_line_y = 0;
+        stat.lyc_ly_comparison = (ly == lyc);
+        stat.ppu_mode = MODE_HBLANK;
+        last_mode = MODE_HBLANK;
         return;
     }
 
@@ -307,6 +292,9 @@ void PPU::tick(const u16 cycles)
             render_scanline();
 
             stat.ppu_mode = MODE_HBLANK;
+
+            if (stat.mode_0_int_select && last_mode != MODE_HBLANK)
+                imu.request_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
         }
         break;
 
@@ -315,16 +303,21 @@ void PPU::tick(const u16 cycles)
         {
             mode_clock %= 204;
 
-            increment_ly();
+            ++ly;
 
             if (ly == 144)
             {
                 stat.ppu_mode = MODE_VBLANK;
                 imu.request_interrupt(InterruptSource::INTERRUPT_VBLANK);
+
+                if (stat.mode_1_int_select && last_mode != MODE_VBLANK)
+                    imu.request_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
             }
             else
             {
                 stat.ppu_mode = MODE_OAM_SEARCH;
+                if (stat.mode_2_int_select && last_mode != MODE_OAM_SEARCH)
+                    imu.request_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
             }
         }
         break;
@@ -333,7 +326,7 @@ void PPU::tick(const u16 cycles)
         if (mode_clock >= 456)
         {
             mode_clock %= 456;
-            increment_ly();
+            ++ly;
 
             if (ly == 154)
             {
@@ -341,33 +334,23 @@ void PPU::tick(const u16 cycles)
                 ly = 0;
                 window_line_y = 0;
                 stat.ppu_mode = MODE_OAM_SEARCH;
+
+                if (stat.mode_2_int_select && last_mode != MODE_OAM_SEARCH)
+                    imu.request_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
             }
         }
         break;
     }
 
-    if (stat.ppu_mode != last_mode)
-    {
-        switch (stat.ppu_mode)
-        {
-        case MODE_HBLANK:
-            if (stat.mode_0_int_select)
-                imu.request_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
-            break;
-        case MODE_VBLANK:
-            if (stat.mode_1_int_select)
-                imu.request_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
-            break;
-        case MODE_OAM_SEARCH:
-            if (stat.mode_2_int_select)
-                imu.request_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
-            break;
-        default:
-            break;
-        }
+    auto was_lyc_ly_true = stat.lyc_ly_comparison;
+    stat.lyc_ly_comparison = (ly == lyc);
 
-        last_mode = static_cast<PPUMode>(stat.ppu_mode);
+    if (!was_lyc_ly_true && stat.lyc_ly_comparison && stat.lyc_int_select)
+    {
+        imu.request_interrupt(InterruptSource::INTERRUPT_LCD_STAT);
     }
+
+    last_mode = static_cast<PPUMode>(stat.ppu_mode);
 }
 
 void PPU::dma_transfer(u8 source_byte)
@@ -452,7 +435,7 @@ void PPU::render_scanline()
     // Push pixel to frame buffer
     for (u8 x{0}; x < SCREEN_WIDTH; ++x)
     {
-        const auto use_window = lcdc.window_enable && ly >= wy && x >= (wx - 7);
+        const auto use_window = lcdc.window_enable && window_line_y >= wy && x >= (wx - 7);
 
         u8 tile_x, tile_y, translated_x, translated_y;
         u16 tile_map_addr;
@@ -460,16 +443,20 @@ void PPU::render_scanline()
 
         if (use_window) // Window
         {
+            // Window does not use scx and scy like background
+
             u8 window_x = x - (wx - 7);
-            u8 window_y = ly - wy;
+            u8 window_y = window_line_y - wy;
 
             tile_x = window_x / 8;
-            tile_y = window_line_y / 8;
+            tile_y = window_y / 8;
 
             translated_x = window_x % 8;
-            translated_y = window_line_y % 8;
+            translated_y = window_y % 8;
 
             tile_map_addr = (lcdc.window_tile_map_area ? 0x9C00 : 0x9800) + (32 * tile_y + tile_x);
+
+            ++window_line_y;
         }
         else // Background
         {
@@ -493,7 +480,7 @@ void PPU::render_scanline()
         const auto tile_map_index = vram[tile_map_addr - VRAM_START];
         const auto color_id = get_color_id_from_tile(tile_map_index, translated_x, translated_y);
 
-        const auto bg_pixel_color = (bgp.bgp >> (color_id * 2)) & 0x3;
+        const auto bg_pixel_color = (bgp >> (color_id * 2)) & 0x3;
         final_pixel_color = bg_pixel_color;
 
         // Sprites
@@ -530,15 +517,15 @@ void PPU::render_scanline()
             const auto sprite_color_id = get_color_id_from_tile(tile_idx, sprite_x, sprite_y);
 
             if (sprite_color_id == 0)
-                continue; // Transparent pixel
+                continue; // Color index 0 is transparent for OBJs
 
             u8 palette = sprite.flags.dmg_palette ? obp1 : obp0;
             u8 sprite_pixel_color = (palette >> (sprite_color_id * 2)) & 0x3;
 
             const auto bg_transparent = (final_pixel_color == 0);
-            const auto sprite_priority = !(sprite.flags.priority);
+            const auto sprite_priority = !(sprite.flags.priority); // Bit 7 gives priority when NOT set
 
-            if (bg_transparent || sprite_priority || !bg_enabled)
+            if (bg_transparent || sprite_priority)
             {
                 final_pixel_color = sprite_pixel_color;
             }
@@ -561,7 +548,8 @@ void PPU::draw_frame()
 
 void PPU::blank_line(u8 y)
 {
-    std::fill_n(frame_buffer.begin() + y * 160, 160, 0);
+    // TODO: Figure out why this is id3 instead of id0
+    std::fill_n(frame_buffer.begin() + (y * SCREEN_WIDTH), SCREEN_WIDTH, pixel_colors[bgp & 0x3]);
 }
 
 void PPU::push_pixel(const u8 x, const u8 y, const u8 color_id)
@@ -600,7 +588,7 @@ void PPU::load_tile_map_buffer()
                     const auto tile_lower = *(tile_data + 2 * y + 1);
 
                     const auto color_id = ((tile_upper >> (7 - x)) & 0x1) | (((tile_lower >> (7 - x)) & 0x1) << 1);
-                    const auto tile_pixel_color = (bgp.bgp >> (color_id * 2)) & 0x3;
+                    const auto tile_pixel_color = (bgp >> (color_id * 2)) & 0x3;
 
                     const auto pixel_x = tile_x * 8 + x;
                     const auto pixel_y = tile_y * 8 + y;

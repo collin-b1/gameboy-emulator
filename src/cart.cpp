@@ -62,6 +62,10 @@ bool Cart::load_rom(const std::string &path)
     {
         return load_header();
     }
+    else
+    {
+        return false;
+    }
 }
 
 bool Cart::load_header()

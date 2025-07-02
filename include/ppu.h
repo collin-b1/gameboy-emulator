@@ -7,6 +7,7 @@
 #include "definitions.h"
 #include "interrupt.h"
 #include "memory.h"
+#include "system.h"
 
 constexpr u16 VRAM_START = 0x8000;
 constexpr u16 VRAM_END = 0x9FFF;
@@ -51,7 +52,7 @@ enum PPUMode : u8
 
 class MMU;
 
-class PPU final : public QObject, public IMemory
+class PPU final : public QObject, public IMemory, public ITickableSystem
 {
     Q_OBJECT
 
@@ -79,7 +80,7 @@ public:
     void push_pixel(u8 x, u8 y, u8 color_id);
     void blank_line(u8 y);
 
-    void tick(u16);
+    void tick(u16) override;
     void increment_ly();
     void dma_transfer(u8);
     void render_scanline();
@@ -90,8 +91,10 @@ signals:
     void tile_map_ready(const std::array<u32, TILE_MAP_SIZE> &tile_map_buffer);
 
 private:
+    u64 _cycles{};
+
     std::array<u32, SCREEN_SIZE> frame_buffer;
-    std::array<u32, TILE_MAP_SIZE> tile_map_buffer;
+    std::array<u32, TILE_MAP_SIZE> tile_map_buffer{};
 
     MMU *mmu;
     InterruptManager &imu;
@@ -164,16 +167,7 @@ private:
 
     // 0xFF47: BGP - Background Palette Data (non-CGB mode only)
     // 0: White, 1: Light gray, 2: Dark gray, 3: Black
-    union {
-        u8 bgp;
-        struct
-        {
-            u8 id3 : 2;
-            u8 id2 : 2;
-            u8 id1 : 2;
-            u8 id0 : 2;
-        };
-    } bgp;
+    u8 bgp;
 
     // 0xFF48 - 0xFF49: OBP0, OBP1 - Object Palette Data (non-CGB mode only)
     u8 obp0, obp1;

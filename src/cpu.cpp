@@ -1417,7 +1417,7 @@ void CPU::AND_A_r8(u8 &r8)
 
 void CPU::STOP()
 {
-    // debug only
+    mmu.bus_write(0xFF04, 0); // STOP instruction resets and stops timer until stop mode is exited
     // exit(1);
 }
 
@@ -1671,8 +1671,9 @@ void CPU::JR_imm8()
 void CPU::RLA()
 {
     u8 msbit = registers.af.msb >> 7;
-    registers.af.word <<= 1;
-    registers.af.word |= (u16)registers.get_carry_flag();
+    registers.af.msb <<= 1;
+    registers.af.msb |= registers.get_carry_flag();
+    // registers.af.word |= (u16)registers.get_carry_flag();
 
     registers.set_zero_flag(0);
     registers.set_sub_flag(0);
