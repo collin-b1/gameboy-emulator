@@ -1673,7 +1673,6 @@ void CPU::RLA()
     u8 msbit = registers.af.msb >> 7;
     registers.af.msb <<= 1;
     registers.af.msb |= registers.get_carry_flag();
-    // registers.af.word |= (u16)registers.get_carry_flag();
 
     registers.set_zero_flag(0);
     registers.set_sub_flag(0);

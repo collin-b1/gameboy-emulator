@@ -279,6 +279,9 @@ void PPU::tick(const u16 cycles)
                 }
             }
 
+            std::sort(visible_sprites.begin(), visible_sprites.end(),
+                      [](const Object &a, const Object &b) { return a.x < b.x; });
+
             mode_clock %= 80;
             stat.ppu_mode = MODE_VRAM;
         }
@@ -303,6 +306,10 @@ void PPU::tick(const u16 cycles)
         {
             mode_clock %= 204;
 
+            if (lcdc.window_enable && ly >= wy && wx < 166)
+            {
+                ++window_line_y;
+            }
             ++ly;
 
             if (ly == 144)
@@ -326,6 +333,11 @@ void PPU::tick(const u16 cycles)
         if (mode_clock >= 456)
         {
             mode_clock %= 456;
+
+            if (lcdc.window_enable && ly >= wy && wx < 166)
+            {
+                ++window_line_y;
+            }
             ++ly;
 
             if (ly == 154)
@@ -435,7 +447,7 @@ void PPU::render_scanline()
     // Push pixel to frame buffer
     for (u8 x{0}; x < SCREEN_WIDTH; ++x)
     {
-        const auto use_window = lcdc.window_enable && window_line_y >= wy && x >= (wx - 7);
+        const auto use_window = lcdc.window_enable && ly >= wy && x >= (wx - 7) && wx < 166;
 
         u8 tile_x, tile_y, translated_x, translated_y;
         u16 tile_map_addr;
@@ -446,7 +458,7 @@ void PPU::render_scanline()
             // Window does not use scx and scy like background
 
             u8 window_x = x - (wx - 7);
-            u8 window_y = window_line_y - wy;
+            u8 window_y = window_line_y;
 
             tile_x = window_x / 8;
             tile_y = window_y / 8;
@@ -455,8 +467,6 @@ void PPU::render_scanline()
             translated_y = window_y % 8;
 
             tile_map_addr = (lcdc.window_tile_map_area ? 0x9C00 : 0x9800) + (32 * tile_y + tile_x);
-
-            ++window_line_y;
         }
         else // Background
         {
