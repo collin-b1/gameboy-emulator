@@ -30,8 +30,13 @@ void Timer::tick(u16 cycles)
     if (_div_stopped) // CPU is stopped
         return;
 
-    auto old_div = div;
-    div += cycles;
+    _cycles += cycles;
+
+    if (_cycles >= 256)
+    {
+        _cycles %= 256;
+        ++div;
+    }
 
     if (tac & 0x04) // TAC bit 4: Timer enable
     {

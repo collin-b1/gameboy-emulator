@@ -32,14 +32,20 @@ struct Object
         u8 flags;
         struct
         {
-            u8 priority : 1;
-            u8 y_flip : 1;
-            u8 x_flip : 1;
-            u8 dmg_palette : 1;
-            u8 bank : 1;
             u8 cgb_palette : 3;
+            u8 bank : 1;
+            u8 dmg_palette : 1;
+            u8 x_flip : 1;
+            u8 y_flip : 1;
+            u8 priority : 1;
         };
     } flags;
+};
+
+struct IndexedObject
+{
+    Object obj;
+    u8 index;
 };
 
 enum PPUMode : u8
@@ -71,9 +77,10 @@ public:
     [[nodiscard]] u8 get_viewport_x() const;
 
     // Tile operations
-    [[nodiscard]] Object get_object_from_oam(u8);
-    [[nodiscard]] const u8 *get_tile_data(u8) const;
-    [[nodiscard]] u8 get_color_id_from_tile(u8 tile, u8 x, u8 y) const;
+    Object get_object_from_oam(u8);
+    [[nodiscard]] const u8 *get_bg_tile_data(u8) const;
+    const u8 *get_obj_tile_data(u8) const;
+    [[nodiscard]] static u8 get_color_id_from_tile(const u8 *tile, u8 x, u8 y);
     void load_tile_map_buffer();
 
     // Frame buffer operations
@@ -111,7 +118,7 @@ private:
     std::array<u8, OAM_END - OAM_START + 1> oam;
 
     // OAM Sprites
-    std::array<Object, 10> visible_sprites;
+    std::array<IndexedObject, 10> visible_sprites;
     int visible_sprite_count;
 
     // std::array<u8, SCREEN_WIDTH * SCREEN_HEIGHT> screen;

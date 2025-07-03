@@ -266,21 +266,33 @@ void PPU::tick(const u16 cycles)
             // OAM search
             visible_sprite_count = 0;
 
-            const auto sprite_height = lcdc.obj_size ? (u8)16 : (u8)8;
-
-            for (auto obj_i{0}; obj_i < 40 && visible_sprite_count < 10; ++obj_i)
+            if (lcdc.obj_enable)
             {
-                const auto obj = get_object_from_oam(obj_i);
-                const auto obj_y = obj.y - 16;
+                const auto sprite_height = lcdc.obj_size ? (u8)16 : (u8)8;
 
-                if (ly >= obj_y && ly < (obj_y + sprite_height))
+                for (u8 obj_i{0}; obj_i < 40 && visible_sprite_count < 10; ++obj_i)
                 {
-                    visible_sprites[visible_sprite_count++] = obj;
-                }
-            }
+                    const auto obj = get_object_from_oam(obj_i);
+                    const auto obj_y = obj.y - 16;
 
-            std::sort(visible_sprites.begin(), visible_sprites.end(),
-                      [](const Object &a, const Object &b) { return a.x < b.x; });
+                    if (ly >= obj_y && ly < (obj_y + sprite_height))
+                    {
+                        visible_sprites[visible_sprite_count++] = {obj, obj_i};
+                    }
+                }
+
+                std::sort(visible_sprites.begin(), visible_sprites.end(),
+                          [](const IndexedObject &a, const IndexedObject &b) {
+                              if (a.obj.x == b.obj.x)
+                              {
+                                  return a.index < b.index;
+                              }
+                              else
+                              {
+                                  return a.obj.x < b.obj.x;
+                              }
+                          });
+            }
 
             mode_clock %= 80;
             stat.ppu_mode = MODE_VRAM;
@@ -372,7 +384,7 @@ void PPU::dma_transfer(u8 source_byte)
         oam[i] = mmu->bus_read(base + i);
 }
 
-const u8 *PPU::get_tile_data(u8 idx) const
+const u8 *PPU::get_bg_tile_data(u8 idx) const
 {
     if (lcdc.bg_window_tile_data_area)
     {
@@ -388,54 +400,28 @@ const u8 *PPU::get_tile_data(u8 idx) const
     }
 }
 
-// void PPU::next_dot()
-// {
-//     if (!lcdc.lcd_ppu_enable) return;
-//
-//     renderer.render_frame_buffer();
-//
-//     switch (stat.ppu_mode)
-//     {
-//     // Mode 2: OAM Scan
-//     // Duration: 80 dots
-//     case MODE_OAM_SEARCH:
-//         // Search for OBJs which overlap this scanline
-//
-//         break;
-//
-//     // Mode 3: Drawing Pixels
-//     // Duration: 172 to 289 dots
-//     case MODE_VRAM:
-//         // renderer.push_pixel(scx, scy, );
-//         break;
-//
-//     // Mode 0: Horizontal Blank
-//     // Duration: 376 - Mode 3's duration
-//     case MODE_HBLANK:
-//         break;
-//
-//     // Mode 1: Vertical Blank
-//     // Duration: 4560 dots
-//     case MODE_VBLANK:
-//
-//         break;
-//
-//     // Unreachable
-//     default:
-//         exit(8);
-//     }
-// }
+const u8 *PPU::get_obj_tile_data(u8 idx) const
+{
+    return &vram[idx * 16];
+}
 
 Object PPU::get_object_from_oam(u8 idx)
 {
-    const auto obj = reinterpret_cast<Object *>(oam.data() + idx * 4);
+    // const auto obj = reinterpret_cast<Object *>(oam.data() + idx * 4);
 
-    return *obj;
+    const auto *obj_ptr = oam.data() + idx * 4;
+    Object obj{};
+
+    obj.y = obj_ptr[0];
+    obj.x = obj_ptr[1];
+    obj.tile_index = obj_ptr[2];
+    obj.flags.flags = obj_ptr[3];
+
+    return obj;
 }
 
 void PPU::render_scanline()
 {
-
     const auto bg_enabled = lcdc.bg_window_enable_priority;
 
     if (!bg_enabled)
@@ -488,32 +474,34 @@ void PPU::render_scanline()
         }
 
         const auto tile_map_index = vram[tile_map_addr - VRAM_START];
-        const auto color_id = get_color_id_from_tile(tile_map_index, translated_x, translated_y);
+        const auto color_id = get_color_id_from_tile(get_bg_tile_data(tile_map_index), translated_x, translated_y);
 
         const auto bg_pixel_color = (bgp >> (color_id * 2)) & 0x3;
+
         final_pixel_color = bg_pixel_color;
 
         // Sprites
         for (auto sprite_idx{0}; sprite_idx < visible_sprite_count; ++sprite_idx)
         {
             const auto sprite = visible_sprites[sprite_idx];
-            u8 sprite_x = x - (sprite.x - 8);
+
+            auto sprite_x = static_cast<int>(x) - (sprite.obj.x - 8);
             if (sprite_x < 0 || sprite_x >= 8)
                 continue; // Sprite X does not overlap with current pixel
 
-            u8 sprite_y = ly - (sprite.y - 16);
+            auto sprite_y = static_cast<int>(ly) - (sprite.obj.y - 16);
             u8 sprite_height = lcdc.obj_size ? 16 : 8;
             if (sprite_y < 0 || sprite_y >= sprite_height)
                 continue; // Sprite Y does not overlap with current pixel
 
-            if (sprite.flags.x_flip)
+            if (sprite.obj.flags.x_flip)
                 sprite_x = 7 - sprite_x;
 
-            if (sprite.flags.y_flip)
+            if (sprite.obj.flags.y_flip)
                 sprite_y = sprite_height - 1 - sprite_y;
 
             // Change tile index if in 8x16 mode
-            u8 tile_idx = sprite.tile_index;
+            u8 tile_idx = sprite.obj.tile_index;
             if (sprite_height == 16)
             {
                 tile_idx &= 0xFE;
@@ -524,22 +512,29 @@ void PPU::render_scanline()
                 }
             }
 
-            const auto sprite_color_id = get_color_id_from_tile(tile_idx, sprite_x, sprite_y);
+            const auto sprite_color_id = get_color_id_from_tile(get_obj_tile_data(tile_idx), sprite_x, sprite_y);
 
-            if (sprite_color_id == 0)
-                continue; // Color index 0 is transparent for OBJs
-
-            u8 palette = sprite.flags.dmg_palette ? obp1 : obp0;
+            u8 palette = sprite.obj.flags.dmg_palette ? obp1 : obp0;
             u8 sprite_pixel_color = (palette >> (sprite_color_id * 2)) & 0x3;
 
-            const auto bg_transparent = (final_pixel_color == 0);
-            const auto sprite_priority = !(sprite.flags.priority); // Bit 7 gives priority when NOT set
-
-            if (bg_transparent || sprite_priority)
+            if (sprite_pixel_color == 0)
             {
-                final_pixel_color = sprite_pixel_color;
+                continue; // Color index 0 is transparent for OBJs
             }
 
+            if (bg_pixel_color == 0)
+            {
+                final_pixel_color = sprite_pixel_color;
+                break;
+            }
+
+            if (sprite.obj.flags.priority)
+            {
+                // If sprite priority flag is set and bg index isn't 0, then bg color is used;
+                continue;
+            }
+
+            final_pixel_color = sprite_pixel_color;
             break;
         }
 
@@ -569,10 +564,8 @@ void PPU::push_pixel(const u8 x, const u8 y, const u8 color_id)
     frame_buffer[y * SCREEN_WIDTH + x] = pixel_colors[color_id & 0x3];
 }
 
-u8 PPU::get_color_id_from_tile(u8 tile, u8 x, u8 y) const
+u8 PPU::get_color_id_from_tile(const u8 *tile_data, u8 x, u8 y)
 {
-    const auto tile_data = get_tile_data(tile);
-
     const auto tile_upper = *(tile_data + 2 * y);
     const auto tile_lower = *(tile_data + 2 * y + 1);
 
