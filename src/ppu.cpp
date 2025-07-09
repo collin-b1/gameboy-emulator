@@ -322,6 +322,7 @@ void PPU::tick(const u16 cycles)
             {
                 ++window_line_y;
             }
+
             ++ly;
 
             if (ly == 144)
@@ -432,58 +433,59 @@ void PPU::render_scanline()
     // Push pixel to frame buffer
     for (u8 x{0}; x < SCREEN_WIDTH; ++x)
     {
-        const auto use_window = lcdc.window_enable && ly >= wy && x >= (wx - 7) && wx < 166;
+        const auto window_x_offset = static_cast<int>(wx) - 7;
+        const auto use_window = lcdc.window_enable && ly >= wy && x >= window_x_offset && window_x_offset < 160;
 
-        u8 tile_x, tile_y, translated_x, translated_y;
-        u16 tile_map_addr;
         u8 final_pixel_color = 0;
-
-        if (use_window) // Window
-        {
-            // Window does not use scx and scy like background
-
-            u8 window_x = x - (wx - 7);
-            u8 window_y = window_line_y;
-
-            tile_x = window_x / 8;
-            tile_y = window_y / 8;
-
-            translated_x = window_x % 8;
-            translated_y = window_y % 8;
-
-            tile_map_addr = (lcdc.window_tile_map_area ? 0x9C00 : 0x9800) + (32 * tile_y + tile_x);
-        }
-        else // Background
-        {
-            if (ly >= SCREEN_HEIGHT)
-            {
-                return;
-            }
-
-            const auto pixel_x = (x + scx) % 256;
-            const auto pixel_y = (ly + scy) % 256;
-
-            tile_x = pixel_x / 8;
-            tile_y = pixel_y / 8;
-
-            translated_x = pixel_x % 8;
-            translated_y = pixel_y % 8;
-
-            tile_map_addr = (lcdc.bg_tile_map_area ? 0x9C00 : 0x9800) + (32 * tile_y + tile_x);
-        }
-
-        const auto tile_map_index = vram[tile_map_addr - VRAM_START];
-        const auto color_id = get_color_id_from_tile(get_bg_tile_data(tile_map_index), translated_x, translated_y);
-
-        const auto bg_pixel_color = (bgp >> (color_id * 2)) & 0x3;
 
         if (bg_enabled)
         {
-            final_pixel_color = bg_pixel_color;
-        }
-        else
-        {
-            final_pixel_color = 0;
+            u8 tile_x, tile_y, translated_x, translated_y;
+            u16 tile_map_addr;
+
+            if (use_window) // Window
+            {
+                // Window does not use scx and scy like background
+
+                u8 window_x = x - (wx - 7);
+                u8 window_y = window_line_y;
+
+                tile_x = window_x / 8;
+                tile_y = window_y / 8;
+
+                translated_x = window_x % 8;
+                translated_y = window_y % 8;
+
+                tile_map_addr = (lcdc.window_tile_map_area ? 0x9C00 : 0x9800) + (32 * tile_y + tile_x);
+            }
+            else // Background
+            {
+                if (ly >= SCREEN_HEIGHT)
+                {
+                    return;
+                }
+
+                const auto pixel_x = (x + scx) % 256;
+                const auto pixel_y = (ly + scy) % 256;
+
+                tile_x = pixel_x / 8;
+                tile_y = pixel_y / 8;
+
+                translated_x = pixel_x % 8;
+                translated_y = pixel_y % 8;
+
+                tile_map_addr = (lcdc.bg_tile_map_area ? 0x9C00 : 0x9800) + (32 * tile_y + tile_x);
+            }
+
+            const auto tile_map_index = vram[tile_map_addr - VRAM_START];
+            const auto color_id = get_color_id_from_tile(get_bg_tile_data(tile_map_index), translated_x, translated_y);
+
+            const auto bg_pixel_color = (bgp >> (color_id * 2)) & 0x3;
+
+            if (bg_enabled)
+            {
+                final_pixel_color = bg_pixel_color;
+            }
         }
 
         // Sprites
@@ -491,12 +493,16 @@ void PPU::render_scanline()
         {
             const auto sprite = visible_sprites[sprite_idx];
 
-            auto sprite_x = static_cast<int>(x) - (sprite.obj.x - 8);
+            auto sprite_screen_x = static_cast<int>(sprite.obj.x) - 8;
+            auto sprite_x = static_cast<int>(x) - sprite_screen_x;
             if (sprite_x < 0 || sprite_x >= 8)
                 continue; // Sprite X does not overlap with current pixel
 
-            auto sprite_y = static_cast<int>(ly) - (sprite.obj.y - 16);
             u8 sprite_height = lcdc.obj_size ? 16 : 8;
+
+            auto sprite_screen_y = static_cast<int>(sprite.obj.y) - 16;
+            auto sprite_y = static_cast<int>(ly) - sprite_screen_y;
+
             if (sprite_y < 0 || sprite_y >= sprite_height)
                 continue; // Sprite Y does not overlap with current pixel
 
@@ -528,7 +534,7 @@ void PPU::render_scanline()
                 continue; // Color index 0 is transparent for OBJs
             }
 
-            if (!bg_enabled || bg_pixel_color == 0)
+            if (!bg_enabled || final_pixel_color == 0)
             {
                 final_pixel_color = sprite_pixel_color;
                 break;
