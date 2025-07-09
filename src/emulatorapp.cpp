@@ -8,7 +8,7 @@
 EmulatorApp::EmulatorApp(QObject *parent) : QObject(parent)
 {
     core = nullptr;
-    main_window = new MainWindow();
+    main_window = new MainWindow(&core);
     debug_window = new DebugWindow();
 
     // Render loop
@@ -22,7 +22,7 @@ void EmulatorApp::start(const std::string &rom_path)
 {
     main_window->show();
 
-    if (rom_path != "")
+    if (!rom_path.empty())
     {
         std::cout << "Loaded ROM from args: " << rom_path << std::endl;
         emit on_rom_loaded(QString::fromStdString(rom_path));

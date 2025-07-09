@@ -3,6 +3,7 @@
 #include "cpu.h"
 #include "definitions.h"
 #include "interrupt.h"
+#include "joypad.h"
 #include "mmu.h"
 #include "ppu.h"
 #include <QObject>
@@ -18,6 +19,8 @@ public:
     void reset();
     void init_post_boot();
 
+    void set_button_pressed(Gobby::JoypadInput button, bool pressed);
+
     const PPU *get_ppu() const;
     u8 *get_tile_map_buffer() const;
 
@@ -28,6 +31,7 @@ private:
     CPU cpu;
     PPU ppu;
     MMU mmu;
+    Joypad joypad;
     Timer timer;
     InterruptManager interrupts;
 };

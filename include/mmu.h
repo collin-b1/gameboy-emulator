@@ -22,7 +22,7 @@ class PPU;
 class MMU
 {
 public:
-    MMU(Cart &, PPU &, InterruptManager &, Timer &);
+    MMU(Cart &, PPU &, InterruptManager &, Timer &, Joypad &);
     bool is_boot_rom_disabled() const;
     void stop_div(bool);
     [[nodiscard]] uint8_t bus_read(uint16_t) const;
@@ -42,5 +42,5 @@ private:
     InterruptManager &imu;
     Timer &timer;
     Serial serial;
-    Joypad joypad;
+    Joypad &joypad;
 };

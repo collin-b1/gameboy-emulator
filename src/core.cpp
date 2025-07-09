@@ -5,9 +5,10 @@ GameboyCore::GameboyCore(QObject *parent)
     , clock(0)
     , cart{}
     , interrupts{}
+    , joypad{}
     , timer{interrupts}
     , ppu{interrupts}
-    , mmu{cart, ppu, interrupts, timer}
+    , mmu{cart, ppu, interrupts, timer, joypad}
     , cpu{mmu, interrupts}
 {
     ppu.bind_mmu(&mmu);
@@ -54,4 +55,9 @@ bool GameboyCore::load_rom(const std::string &rom_path)
 const PPU *GameboyCore::get_ppu() const
 {
     return &ppu;
+}
+
+void GameboyCore::set_button_pressed(Gobby::JoypadInput button, bool pressed)
+{
+    joypad.set_button_pressed(button, pressed);
 }

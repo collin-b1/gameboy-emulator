@@ -9,7 +9,7 @@ class EmulatorApp : public QObject
 {
     Q_OBJECT
 public:
-    EmulatorApp(QObject *parent = nullptr);
+    explicit EmulatorApp(QObject *parent = nullptr);
     void start(const std::string &rom_path = "");
 
 public slots:

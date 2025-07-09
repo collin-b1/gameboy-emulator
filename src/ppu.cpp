@@ -427,7 +427,6 @@ void PPU::render_scanline()
     if (!bg_enabled)
     {
         blank_line(ly);
-        return;
     }
 
     // Push pixel to frame buffer
@@ -478,7 +477,14 @@ void PPU::render_scanline()
 
         const auto bg_pixel_color = (bgp >> (color_id * 2)) & 0x3;
 
-        final_pixel_color = bg_pixel_color;
+        if (bg_enabled)
+        {
+            final_pixel_color = bg_pixel_color;
+        }
+        else
+        {
+            final_pixel_color = 0;
+        }
 
         // Sprites
         for (auto sprite_idx{0}; sprite_idx < visible_sprite_count; ++sprite_idx)
@@ -522,7 +528,7 @@ void PPU::render_scanline()
                 continue; // Color index 0 is transparent for OBJs
             }
 
-            if (bg_pixel_color == 0)
+            if (!bg_enabled || bg_pixel_color == 0)
             {
                 final_pixel_color = sprite_pixel_color;
                 break;

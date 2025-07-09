@@ -3,8 +3,8 @@
 #include <iomanip>
 #include <iostream>
 
-MMU::MMU(Cart &cart, PPU &ppu, InterruptManager &imu, Timer &timer)
-    : cart(cart), ppu(ppu), imu(imu), wram(), io(), hram(), timer(timer), serial(), joypad(), svbk(0)
+MMU::MMU(Cart &cart, PPU &ppu, InterruptManager &imu, Timer &timer, Joypad &joypad)
+    : cart(cart), ppu(ppu), imu(imu), wram(), io(), hram(), timer(timer), serial(), joypad(joypad), svbk(0)
 {
 }
 

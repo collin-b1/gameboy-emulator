@@ -1,13 +1,13 @@
-﻿cmake_minimum_required(VERSION 3.10)
+﻿cmake_minimum_required(VERSION 3.22)
 project(Gobby)
 
 # Specify C++ Standard
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_AUTOMOC ON)        # For Qt meta-object compiler
-set(CMAKE_AUTORCC ON)        # If using Qt resources
-set(CMAKE_AUTOUIC ON)        # If using .ui files
+# set(CMAKE_AUTOMOC ON) # For Qt meta-object compiler
+# set(CMAKE_AUTORCC ON) # If using Qt resources
+# set(CMAKE_AUTOUIC ON) # If using .ui files
 
 if (MSVC)
     add_compile_options(/Zc:__cplusplus)
@@ -23,6 +23,8 @@ endif ()
 #find_package(SDL2 CONFIG REQUIRED)
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
+qt_standard_project_setup()
+
 # Include directories
 include_directories(include)
 
@@ -31,7 +33,7 @@ file(GLOB_RECURSE SOURCES "src/*.cpp")
 file(GLOB_RECURSE HEADERS "include/*.h" "include/*.hpp")
 
 # Define the executable
-add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
+qt_add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
