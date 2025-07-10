@@ -516,13 +516,13 @@ void PPU::render_scanline()
 
             const auto sprite_color_id = get_color_id_from_tile(get_obj_tile_data(tile_idx), sprite_x, sprite_y);
 
-            u8 palette = sprite.obj.flags.dmg_palette ? obp1 : obp0;
-            u8 sprite_pixel_color = (palette >> (sprite_color_id * 2)) & 0x3;
-
-            if (sprite_pixel_color == 0)
+            if (sprite_color_id == 0)
             {
                 continue; // Color index 0 is transparent for OBJs
             }
+
+            u8 palette = sprite.obj.flags.dmg_palette ? obp1 : obp0;
+            u8 sprite_pixel_color = (palette >> (sprite_color_id * 2)) & 0x3;
 
             if (sprite.obj.flags.priority && final_pixel_color != 0)
             {
