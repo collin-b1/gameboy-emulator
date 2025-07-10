@@ -1,5 +1,4 @@
 #include "joypad.h"
-#include <format>
 #include <iostream>
 
 Joypad::Joypad()

@@ -14,7 +14,7 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
 public:
-    MainWindow(GameboyCore **core_ptr, QWidget *parent = nullptr);
+    explicit MainWindow(GameboyCore **core_ptr, QWidget *parent = nullptr);
     RendererWidget *get_renderer();
 
 signals:

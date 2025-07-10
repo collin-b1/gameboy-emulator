@@ -83,10 +83,6 @@ bool Cart::load_header()
         std::cerr << "Checksum does not match!" << std::endl;
         return false;
     }
-    else
-    {
-        std::cout << "ROM Checksum matches." << std::endl;
-    }
 
     return true;
 }

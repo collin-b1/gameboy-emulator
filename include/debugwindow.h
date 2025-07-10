@@ -1,17 +1,19 @@
 #pragma once
 
 #include "QWidget"
-#include "instructionviewerwidget.h"
+#include "core.h"
+#include "oamviewerwidget.h"
 #include "tilemapviewerwidget.h"
 
 class DebugWindow : public QWidget
 {
     Q_OBJECT
 public:
-    explicit DebugWindow(QWidget *parent = nullptr);
+    explicit DebugWindow(GameboyCore **core, QWidget *parent = nullptr);
     TileMapViewerWidget *get_tile_map_viewer();
 
 private:
+    GameboyCore **core_ptr;
     TileMapViewerWidget *tile_map_viewer;
-    InstructionViewerWidget *instruction_viewer;
+    OamViewerWidget *oam_viewer;
 };

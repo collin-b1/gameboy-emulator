@@ -3,7 +3,7 @@
 #include <QTabWidget>
 #include <QVBoxLayout>
 
-DebugWindow::DebugWindow(QWidget *parent) : QWidget(parent)
+DebugWindow::DebugWindow(GameboyCore **core_ptr, QWidget *parent) : QWidget(parent), core_ptr(core_ptr)
 {
     auto *layout = new QVBoxLayout(this);
 
@@ -11,11 +11,11 @@ DebugWindow::DebugWindow(QWidget *parent) : QWidget(parent)
 
     // Tile Map Viewer
     tile_map_viewer = new TileMapViewerWidget(this);
-    tabs->addTab(tile_map_viewer, "Tile Map");
+    tabs->addTab(tile_map_viewer, "Tiles");
 
     // Instructions Viewer
-    instruction_viewer = new InstructionViewerWidget(this);
-    tabs->addTab(instruction_viewer, "Instructions");
+    oam_viewer = new OamViewerWidget(this);
+    tabs->addTab(oam_viewer, "OAM");
 
     layout->addWidget(tabs);
     setLayout(layout);

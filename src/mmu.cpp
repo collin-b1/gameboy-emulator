@@ -241,16 +241,6 @@ void MMU::bus_write(u16 addr, u8 data)
     else if (addr == 0xFF50)
     {
         // std::cout << "Boot ROM disabled!" << std::endl;
-
-        std::cout << "Tile data at 0x8000:\n";
-        for (int i = 0x8000; i < 0x8100; i += 16)
-        {
-            std::cout << "Tile " << ((i - 0x8000) / 16) << ": ";
-            for (int j = 0; j < 16; ++j)
-                std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)bus_read_word(i + j) << ' ';
-            std::cout << '\n';
-        }
-
         cart.write(addr, data);
     }
 

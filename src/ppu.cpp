@@ -281,7 +281,7 @@ void PPU::tick(const u16 cycles)
                     }
                 }
 
-                std::sort(visible_sprites.begin(), visible_sprites.end(),
+                std::sort(visible_sprites.begin(), visible_sprites.begin() + visible_sprite_count,
                           [](const IndexedObject &a, const IndexedObject &b) {
                               if (a.obj.x == b.obj.x)
                               {
@@ -322,7 +322,6 @@ void PPU::tick(const u16 cycles)
             {
                 ++window_line_y;
             }
-
             ++ly;
 
             if (ly == 144)
@@ -436,7 +435,7 @@ void PPU::render_scanline()
         const auto window_x_offset = static_cast<int>(wx) - 7;
         const auto use_window = lcdc.window_enable && ly >= wy && x >= window_x_offset && window_x_offset < 160;
 
-        u8 final_pixel_color = 0;
+        u8 final_pixel_color = bgp & 0x3;
 
         if (bg_enabled)
         {
@@ -446,12 +445,11 @@ void PPU::render_scanline()
             if (use_window) // Window
             {
                 // Window does not use scx and scy like background
-
                 u8 window_x = x - (wx - 7);
                 u8 window_y = window_line_y;
 
-                tile_x = window_x / 8;
-                tile_y = window_y / 8;
+                tile_x = (window_x / 8) % 32;
+                tile_y = (window_y / 8) % 32;
 
                 translated_x = window_x % 8;
                 translated_y = window_y % 8;
@@ -460,16 +458,11 @@ void PPU::render_scanline()
             }
             else // Background
             {
-                if (ly >= SCREEN_HEIGHT)
-                {
-                    return;
-                }
-
                 const auto pixel_x = (x + scx) % 256;
                 const auto pixel_y = (ly + scy) % 256;
 
-                tile_x = pixel_x / 8;
-                tile_y = pixel_y / 8;
+                tile_x = (pixel_x / 8) % 32;
+                tile_y = (pixel_y / 8) % 32;
 
                 translated_x = pixel_x % 8;
                 translated_y = pixel_y % 8;
@@ -482,10 +475,7 @@ void PPU::render_scanline()
 
             const auto bg_pixel_color = (bgp >> (color_id * 2)) & 0x3;
 
-            if (bg_enabled)
-            {
-                final_pixel_color = bg_pixel_color;
-            }
+            final_pixel_color = bg_pixel_color;
         }
 
         // Sprites
@@ -493,21 +483,21 @@ void PPU::render_scanline()
         {
             const auto sprite = visible_sprites[sprite_idx];
 
-            auto sprite_screen_x = static_cast<int>(sprite.obj.x) - 8;
-            auto sprite_x = static_cast<int>(x) - sprite_screen_x;
-            if (sprite_x < 0 || sprite_x >= 8)
+            const int sprite_left = static_cast<int>(sprite.obj.x) - 8;
+            if (x < sprite_left || x >= sprite_left + 8)
                 continue; // Sprite X does not overlap with current pixel
 
-            u8 sprite_height = lcdc.obj_size ? 16 : 8;
-
-            auto sprite_screen_y = static_cast<int>(sprite.obj.y) - 16;
-            auto sprite_y = static_cast<int>(ly) - sprite_screen_y;
-
-            if (sprite_y < 0 || sprite_y >= sprite_height)
-                continue; // Sprite Y does not overlap with current pixel
+            u8 sprite_x = static_cast<u8>(x - sprite_left);
 
             if (sprite.obj.flags.x_flip)
                 sprite_x = 7 - sprite_x;
+
+            const int sprite_top = static_cast<int>(sprite.obj.y) - 16;
+            const u8 sprite_height = lcdc.obj_size ? 16 : 8;
+            if (ly < sprite_top || ly >= sprite_top + sprite_height)
+                continue; // Sprite Y does not overlap with current pixel
+
+            u8 sprite_y = static_cast<u8>(ly - sprite_top);
 
             if (sprite.obj.flags.y_flip)
                 sprite_y = sprite_height - 1 - sprite_y;
@@ -534,13 +524,7 @@ void PPU::render_scanline()
                 continue; // Color index 0 is transparent for OBJs
             }
 
-            if (!bg_enabled || final_pixel_color == 0)
-            {
-                final_pixel_color = sprite_pixel_color;
-                break;
-            }
-
-            if (sprite.obj.flags.priority)
+            if (sprite.obj.flags.priority && final_pixel_color != 0)
             {
                 // If sprite priority flag is set and bg index isn't 0, then bg color is used;
                 continue;
@@ -565,7 +549,6 @@ void PPU::draw_frame()
 
 void PPU::blank_line(u8 y)
 {
-    // TODO: Figure out why this is id3 instead of id0
     std::fill_n(frame_buffer.begin() + (y * SCREEN_WIDTH), SCREEN_WIDTH, pixel_colors[bgp & 0x3]);
 }
 

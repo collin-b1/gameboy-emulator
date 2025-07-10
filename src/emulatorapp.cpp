@@ -9,7 +9,7 @@ EmulatorApp::EmulatorApp(QObject *parent) : QObject(parent)
 {
     core = nullptr;
     main_window = new MainWindow(&core);
-    debug_window = new DebugWindow();
+    debug_window = new DebugWindow(&core);
 
     // Render loop
     timer = new QTimer(this);
