@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "core.h"
-#include "rendererwidget.h"
+#include "ui/rendererwidget.h"
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QLabel>

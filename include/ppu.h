@@ -4,9 +4,9 @@
 #include <array>
 #include <cstdint>
 
+#include "cpu/interrupt.h"
 #include "definitions.h"
-#include "interrupt.h"
-#include "memory.h"
+#include "memory/memory.h"
 #include "system.h"
 
 constexpr u16 VRAM_START = 0x8000;

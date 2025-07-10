@@ -1,10 +1,10 @@
 #pragma once
 
-#include "cpu.h"
+#include "cpu/cpu.h"
+#include "cpu/interrupt.h"
 #include "definitions.h"
-#include "interrupt.h"
 #include "joypad.h"
-#include "mmu.h"
+#include "memory/mmu.h"
 #include "ppu.h"
 #include <QObject>
 #include <string>

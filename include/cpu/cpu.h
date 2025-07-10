@@ -1,7 +1,7 @@
 #pragma once
 #include "definitions.h"
 #include "interrupt.h"
-#include "mmu.h"
+#include "memory/mmu.h"
 #include "register.h"
 #include <cstdint>
 #include <string>

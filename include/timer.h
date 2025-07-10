@@ -1,8 +1,8 @@
 #pragma once
 
+#include "cpu/interrupt.h"
 #include "definitions.h"
-#include "interrupt.h"
-#include "memory.h"
+#include "memory/memory.h"
 #include "system.h"
 #include <cstdint>
 #include <string>

@@ -1,5 +1,5 @@
 #include "ppu.h"
-#include "mmu.h"
+#include "memory/mmu.h"
 
 #include <iostream>
 

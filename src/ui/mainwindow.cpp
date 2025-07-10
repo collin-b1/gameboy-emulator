@@ -1,4 +1,4 @@
-﻿#include "mainwindow.h"
+﻿#include "ui/mainwindow.h"
 #include "definitions.h"
 #include <QApplication>
 #include <QFileDialog>

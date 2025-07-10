@@ -1,4 +1,4 @@
-#include "cart.h"
+#include "cart/cart.h"
 #include <iostream>
 
 Cart::Cart() : headers(), rom(), boot_rom(), bank(0), boot_rom_disabled(false)

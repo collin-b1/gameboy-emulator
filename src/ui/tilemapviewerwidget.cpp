@@ -1,4 +1,4 @@
-#include "tilemapviewerwidget.h"
+#include "ui/tilemapviewerwidget.h"
 #include <QMouseEvent>
 #include <QPainter>
 #include <QToolTip>

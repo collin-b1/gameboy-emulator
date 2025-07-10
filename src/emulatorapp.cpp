@@ -1,6 +1,6 @@
 #include "emulatorapp.h"
-#include "debugwindow.h"
-#include "mainwindow.h"
+#include "ui/debugwindow.h"
+#include "ui/mainwindow.h"
 #include <QMessageBox>
 #include <QTimer>
 #include <iostream>

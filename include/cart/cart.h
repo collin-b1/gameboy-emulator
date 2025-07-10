@@ -5,7 +5,7 @@
 #include <string>
 
 #include "definitions.h"
-#include "memory.h"
+#include "memory/memory.h"
 
 constexpr u16 BOOT_ROM_SIZE = 0x100;
 

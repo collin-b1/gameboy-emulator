@@ -1,8 +1,8 @@
 #pragma once
 
 #include "core.h"
-#include "debugwindow.h"
-#include "mainwindow.h"
+#include "ui/debugwindow.h"
+#include "ui/mainwindow.h"
 #include <QObject>
 
 class EmulatorApp : public QObject

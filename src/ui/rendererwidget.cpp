@@ -1,4 +1,4 @@
-#include "rendererwidget.h"
+#include "ui/rendererwidget.h"
 #include <QObject>
 #include <QPainter>
 #include <iostream>

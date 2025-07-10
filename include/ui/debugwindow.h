@@ -2,8 +2,8 @@
 
 #include "QWidget"
 #include "core.h"
-#include "oamviewerwidget.h"
-#include "tilemapviewerwidget.h"
+#include "ui/oamviewerwidget.h"
+#include "ui/tilemapviewerwidget.h"
 
 class DebugWindow : public QWidget
 {

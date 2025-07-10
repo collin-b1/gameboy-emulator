@@ -1,4 +1,4 @@
-#include "debugwindow.h"
+#include "ui/debugwindow.h"
 #include "definitions.h"
 #include <QTabWidget>
 #include <QVBoxLayout>

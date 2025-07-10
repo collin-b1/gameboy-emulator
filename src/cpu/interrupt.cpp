@@ -1,4 +1,4 @@
-#include "interrupt.h"
+#include "cpu/interrupt.h"
 #include <iostream>
 
 InterruptManager::InterruptManager() : ime{0}, ie{0}, iflag{0}

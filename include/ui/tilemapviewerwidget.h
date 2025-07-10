@@ -1,8 +1,8 @@
 #pragma once
 
+#include "cpu/register.h"
 #include "definitions.h"
 #include "ppu.h"
-#include "register.h"
 #include <QImage>
 #include <QObject>
 #include <QWidget>

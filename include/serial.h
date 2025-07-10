@@ -1,7 +1,7 @@
 #pragma once
 
 #include "definitions.h"
-#include "memory.h"
+#include "memory/memory.h"
 
 class Serial final : public IMemory
 {

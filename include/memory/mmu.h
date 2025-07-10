@@ -2,8 +2,8 @@
 #include <array>
 #include <memory>
 
-#include "cart.h"
-#include "interrupt.h"
+#include "cart/cart.h"
+#include "cpu/interrupt.h"
 #include "joypad.h"
 #include "serial.h"
 #include "timer.h"
@@ -34,7 +34,6 @@ public:
 private:
     std::array<uint8_t, WRAM_END - WRAM_START + 1> wram;
     std::array<uint8_t, HRAM_END - HRAM_START + 1> hram;
-    std::array<uint8_t, IO_END - IO_START + 1> io;
     uint8_t svbk;
 
     Cart &cart;
