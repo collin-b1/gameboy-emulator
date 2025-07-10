@@ -2,8 +2,11 @@
 #include <array>
 #include <cstdint>
 #include <fstream>
+#include <memory>
 #include <string>
+#include <vector>
 
+#include "cart/imbc.h"
 #include "definitions.h"
 #include "memory/memory.h"
 
@@ -15,7 +18,7 @@ constexpr u16 ROM_END = 0x7FFF;
 constexpr u16 HEADER_START = 0x100;
 constexpr u16 HEADER_END = 0x14F;
 
-enum CartridgeType
+enum CartridgeType : u8
 {
     ROM_ONLY = 0x00,
     MBC1 = 0x01,
@@ -62,16 +65,16 @@ struct CartHeaders
             u8 cgb;
         };
     } title;
-    u16 new_licensee_code; // 0x144-0x145
-    u8 sgb;                // 0x146
-    u8 cartridge_type;     // 0x147
-    u8 rom_size;           // 0x148
-    u8 ram_size;           // 0x149
-    u8 destination_code;   // 0x14A
-    u8 old_licensee_code;  // 0x14B
-    u8 mask_rom_version;   // 0x14C
-    u8 header_checksum;    // 0x14D
-    u16 global_checksum;   // 0x14E-0x14F
+    u16 new_licensee_code;        // 0x144-0x145
+    u8 sgb;                       // 0x146
+    CartridgeType cartridge_type; // 0x147
+    u8 rom_size;                  // 0x148
+    u8 ram_size;                  // 0x149
+    u8 destination_code;          // 0x14A
+    u8 old_licensee_code;         // 0x14B
+    u8 mask_rom_version;          // 0x14C
+    u8 header_checksum;           // 0x14D
+    u16 global_checksum;          // 0x14E-0x14F
 };
 
 class Cart final : public IMemory
@@ -81,28 +84,43 @@ public:
 
     bool load_rom(const std::string &);
     bool load_boot_rom(const std::string &);
-    bool load_header();
+    bool load_headers_and_mbc(const std::vector<u8> &);
 
     bool is_boot_rom_disabled() const;
     [[nodiscard]] u8 read(u16) const override;
     void write(u16, u8) override;
     void print_headers() const;
 
-    // Load buffer from file to an std::array
-    template <typename T, size_t N> bool load_buffer(const std::string &path, std::array<T, N> &buffer)
+    // Load buffer from file to an std::vector
+    template <typename T> bool load_buffer(const std::string &path, std::vector<T> &buffer)
     {
-        std::ifstream rom_file;
-        rom_file.open(path, std::ios::binary);
+        std::ifstream rom_file(path, std::ios::binary | std::ios::ate);
 
         if (!rom_file.is_open())
         {
             return false;
         }
 
-        rom_file.seekg(0, std::ios::end);
+        std::streamsize size = rom_file.tellg();
         rom_file.seekg(0, std::ios::beg);
+
+        buffer.resize(size);
+        rom_file.read(reinterpret_cast<char *>(buffer.data()), size);
+
+        return true;
+    }
+
+    // Load buffer from file to an std::array
+    template <typename T, size_t N> bool load_buffer(const std::string &path, std::array<T, N> &buffer)
+    {
+        std::ifstream rom_file(path, std::ios::binary);
+
+        if (!rom_file.is_open())
+        {
+            return false;
+        }
+
         rom_file.read(reinterpret_cast<char *>(buffer.data()), buffer.size());
-        rom_file.close();
 
         return true;
     }
@@ -110,8 +128,11 @@ public:
 private:
     std::string name;
     CartHeaders headers;
-    std::array<u8, ROM_END - ROM_START + 1> rom;
+
+    std::unique_ptr<IMBC> mbc;
+
+    // TODO: Replace with MBC logic
+    // std::array<u8, ROM_END - ROM_START + 1> rom;
     std::array<u8, BOOT_ROM_SIZE> boot_rom;
-    u8 bank;
     bool boot_rom_disabled;
 };

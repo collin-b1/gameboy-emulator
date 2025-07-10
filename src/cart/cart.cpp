@@ -1,7 +1,75 @@
 #include "cart/cart.h"
+#include "cart/mbc.h"
 #include <iostream>
 
-Cart::Cart() : headers(), rom(), boot_rom(), bank(0), boot_rom_disabled(false)
+// No MBC: 32kb ROM and 8kb RAM
+namespace MBCTypes
+{
+class NoMBC : public MBC<0x8000, 0x2000>
+{
+public:
+    NoMBC(const std::vector<u8> &rom_data) : MBC(rom_data) {};
+
+    void handle_bank_switch(u16 addr, u8 data) override
+    {
+        // Do nothing
+    }
+
+    void write_ram(u16 addr, u8 data) override
+    {
+        // Do nothing
+    }
+};
+
+// MBC1: 512kb ROM and 32kb RAM
+class MBC1 : public MBC<0x80000, 0x8000>
+{
+public:
+    MBC1(const std::vector<u8> &rom_data) : MBC(rom_data) {};
+
+    void handle_bank_switch(u16 addr, u8 data) override
+    {
+        if (addr <= 0x1FFF)
+        {
+            if ((data & 0x0F) == 0xA)
+            {
+                ram_enabled = true;
+            }
+        }
+
+        // ROM bank
+        else if (addr <= 0x3FFF)
+        {
+            // TODO: Make accurate to docs
+            // https://gbdev.io/pandocs/MBC1.html#40005fff--ram-bank-number--or--upper-bits-of-rom-bank-number-write-only
+            rom_bank_select = data & 0x1F;
+        }
+
+        // RAM bank OR upper bits of ROM bank number
+        else if (addr <= 0x5FFF)
+        {
+            ram_bank_select = data & 0x3;
+        }
+
+        // Banking mode select
+        // https://gbdev.io/pandocs/MBC1.html#60007fff--banking-mode-select-write-only
+        else if (addr <= 0x7FFF)
+        {
+            ram_bank_select = data & 0x1;
+        }
+    }
+
+    void write_ram(u16 addr, u8 data) override
+    {
+        // Do nothing
+    }
+
+private:
+    bool banking_mode;
+};
+} // namespace MBCTypes
+
+Cart::Cart() : headers() /*, rom()*/, boot_rom(), boot_rom_disabled(false)
 {
 }
 
@@ -21,7 +89,8 @@ u8 Cart::read(const u16 addr) const
         return 0;
     }
 
-    return rom.at(addr);
+    // return rom.at(addr);
+    return mbc->read(addr);
 }
 
 void Cart::write(const u16 addr, const u8 data)
@@ -33,8 +102,7 @@ void Cart::write(const u16 addr, const u8 data)
     }
     else
     {
-        /*std::cout << std::hex << "Invalid write to addr 0x" << addr << " with data 0x" << data << std::endl;
-        exit(7);*/
+        mbc->write(addr, data);
     }
 }
 
@@ -58,9 +126,11 @@ bool Cart::load_boot_rom(const std::string &path)
 
 bool Cart::load_rom(const std::string &path)
 {
-    if (load_buffer(path, rom))
+    std::vector<u8> rom_data;
+
+    if (load_buffer(path, rom_data))
     {
-        return load_header();
+        return load_headers_and_mbc(rom_data);
     }
     else
     {
@@ -68,20 +138,36 @@ bool Cart::load_rom(const std::string &path)
     }
 }
 
-bool Cart::load_header()
+bool Cart::load_headers_and_mbc(const std::vector<u8> &rom_data)
 {
-    headers = *reinterpret_cast<CartHeaders *>(rom.data() + HEADER_START);
+    headers = *reinterpret_cast<const CartHeaders *>(rom_data.data() + HEADER_START);
 
     u8 checksum = 0;
     for (u16 address = 0x0134; address <= 0x014C; address++)
     {
-        checksum = checksum - rom[address] - 1;
+        checksum = checksum - rom_data.at(address) - 1;
     }
 
-    if (rom[0x014D] != checksum)
+    if (rom_data.at(0x014D) != checksum)
     {
         std::cerr << "Checksum does not match!" << std::endl;
         return false;
+    }
+
+    switch (headers.cartridge_type)
+    {
+    case CartridgeType::ROM_ONLY:
+        mbc = std::make_unique<MBCTypes::NoMBC>(rom_data);
+        break;
+    case CartridgeType::MBC1:
+    case CartridgeType::MBC1_RAM:
+    case CartridgeType::MBC1_RAM_BATTERY:
+        mbc = std::make_unique<MBCTypes::MBC1>(rom_data);
+        break;
+    default:
+        std::cout << "Unsupported MBC type: 0x" << std::hex << static_cast<int>(headers.cartridge_type) << std::endl;
+        mbc = std::make_unique<MBCTypes::NoMBC>(rom_data);
+        break;
     }
 
     return true;
