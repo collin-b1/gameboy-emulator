@@ -142,7 +142,7 @@ public:
 private:
     Registers registers;
     bool is_halted, is_stopped;
-    u8 ime_scheduler;
+    u8 ime_scheduler, halt_bug_scheduler;
     u8 opcode;
     MMU &mmu;
     InterruptManager &imu;

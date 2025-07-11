@@ -46,7 +46,14 @@ constexpr std::array<u8, 256> timings_cb{
 };
 
 CPU::CPU(MMU &mmu, InterruptManager &imu)
-    : registers{}, opcode(0), mmu(mmu), imu(imu), ime_scheduler(false), is_halted(false), is_stopped(false)
+    : registers{}
+    , opcode(0)
+    , mmu(mmu)
+    , imu(imu)
+    , ime_scheduler(false)
+    , is_halted(false)
+    , is_stopped(false)
+    , halt_bug_scheduler(0)
 {
 }
 
@@ -74,9 +81,33 @@ u8 CPU::next_instruction()
 {
     handle_interrupts();
 
+    if (is_halted)
+    {
+        return 1;
+    }
+
     // Fetch, decode, and execute opcode
-    auto opcode = mmu.bus_read(registers.pc++);
-    auto cycles = execute_opcode(opcode);
+    u8 cycles = 0;
+    if (halt_bug_scheduler == 0)
+    {
+        auto opcode = mmu.bus_read(registers.pc++);
+        cycles = execute_opcode(opcode);
+    }
+    else
+    {
+        if (halt_bug_scheduler > 1)
+        {
+            auto opcode = mmu.bus_read(registers.pc);
+            halt_bug_scheduler = 1;
+            return 1;
+        }
+        else
+        {
+            auto opcode = mmu.bus_read(registers.pc);
+            cycles = execute_opcode(opcode);
+            halt_bug_scheduler = 0;
+        }
+    }
 
     // Handle 1-cycle delay from EI instruction
     // IME doesn't get set until END of cycle AFTER EI
@@ -108,7 +139,7 @@ void CPU::handle_interrupts()
     }
 
     // ie & iflag != 0 should unhalt regardless of ime
-    if (is_halted)
+    if (interrupts && is_halted)
     {
         is_halted = false;
     }
@@ -1321,18 +1352,18 @@ void CPU::RST_tgt3(u8 tgt3)
 
 void CPU::HALT()
 {
+
     auto ie = imu.get_interrupt_enable();
     auto iflag = imu.get_interrupt_flag();
-    if (ie & iflag) // ie & if & 0x1F != 0
+    auto ime = imu.get_ime();
+
+    if ((ie & iflag) && !ime)
     {
-        if (!imu.get_ime())
-        {
-            // halt_bug = 1;
-        }
+        halt_bug_scheduler = 2;
     }
-    else // ie & if & 0x1F == 0
+    else
     {
-        is_halted = 1;
+        is_halted = true;
     }
 }
 

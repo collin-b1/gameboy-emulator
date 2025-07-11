@@ -11,7 +11,8 @@ constexpr std::array<u16, 4> clock_increment_array{
     64,  // 0x03: 16384 Hz
 };
 
-Timer::Timer(InterruptManager &imu) : _cycles(0), _div_stopped(false), div(0), tima(0), tma(0), tac(0), imu(imu)
+Timer::Timer(InterruptManager &imu)
+    : _div_counter(0), _tima_counter(0), _div_stopped(false), div(0), tima(0), tma(0), tac(0), imu(imu)
 {
 }
 
@@ -30,21 +31,22 @@ void Timer::tick(u16 cycles)
     if (_div_stopped) // CPU is stopped
         return;
 
-    _cycles += cycles;
+    _div_counter += cycles;
 
-    if (_cycles >= 256)
+    if (_div_counter >= 256)
     {
-        _cycles %= 256;
+        _div_counter -= 256;
         ++div;
     }
 
     if (tac & 0x04) // TAC bit 4: Timer enable
     {
-        u16 clock_increment = clock_increment_array[tac & 0x3];
+        const u16 clock_increment = clock_increment_array[tac & 0x3];
+        _tima_counter += cycles;
 
-        while (cycles >= clock_increment)
+        while (_tima_counter >= clock_increment)
         {
-            cycles -= clock_increment;
+            _tima_counter -= clock_increment;
 
             if (tima == 0xFF)
             {

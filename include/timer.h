@@ -18,7 +18,8 @@ public:
     void stop_div(bool);
 
 private:
-    u64 _cycles;
+    u16 _div_counter;
+    u16 _tima_counter;
 
     // DIV stops when CPU is in stopped mode
     bool _div_stopped;
