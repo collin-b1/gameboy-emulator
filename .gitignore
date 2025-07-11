@@ -11,3 +11,4 @@ CMakeUserPresets.json
 
 out/
 build/
+cmake-build-release/

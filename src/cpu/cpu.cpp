@@ -95,6 +95,7 @@ u8 CPU::next_instruction()
     }
     else
     {
+        // TODO: Fix Halt bug
         if (halt_bug_scheduler > 1)
         {
             auto opcode = mmu.bus_read(registers.pc);
