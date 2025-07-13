@@ -1,8 +1,9 @@
 #include "joypad.h"
 #include <iostream>
 
-Joypad::Joypad()
-    : joyp(0xC0)
+Joypad::Joypad(InterruptManager &interrupts)
+    : interrupts(interrupts)
+    , joyp(0xC0)
     , _buttons(0x0F)    // Button mask
     , _directions(0x0F) // Direction mask
 {
@@ -49,6 +50,7 @@ void Joypad::write(u16 addr, u8 data)
 
 void Joypad::set_button_pressed(Gobby::JoypadInput input, bool pressed)
 {
+    auto inputs_before = read(0xFF00) & 0x0F;
     switch (input)
     {
     case Gobby::A:
@@ -74,4 +76,11 @@ void Joypad::set_button_pressed(Gobby::JoypadInput input, bool pressed)
     //    std::cout << "_buttons :: 0x" << std::hex << static_cast<int>(_buttons) << std::endl;
     //    std::cout << "_directions :: 0x" << std::hex << static_cast<int>(_directions) << std::endl;
     //    std::cout << "joyp :: 0x" << std::hex << static_cast<int>(joyp) << std::endl;
+    auto inputs_after = read(0xFF00) & 0x0F;
+    
+    // Check if any bits changed from 1 to 0
+    if (inputs_before & ~inputs_after)
+    {
+        interrupts.request_interrupt(InterruptSource::INTERRUPT_JOYPAD);
+    }
 }

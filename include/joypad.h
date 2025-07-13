@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cpu/interrupt.h"
 #include "definitions.h"
 #include "memory/memory.h"
 
@@ -22,7 +23,7 @@ enum JoypadInput : u8
 class Joypad : public IMemory
 {
 public:
-    Joypad();
+    Joypad(InterruptManager &);
 
     [[nodiscard]] u8 read(u16) const override;
     void write(u16, u8) override;
@@ -30,6 +31,8 @@ public:
     void set_button_pressed(Gobby::JoypadInput button, bool pressed);
 
 private:
+    InterruptManager &interrupts;
+
     // 0xFF00: P1/JOYP
     u8 joyp;
 
