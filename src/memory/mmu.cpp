@@ -6,6 +6,7 @@
 MMU::MMU(Cart &cart, PPU &ppu, InterruptManager &imu, Timer &timer, Joypad &joypad)
     : cart(cart), ppu(ppu), imu(imu), wram(), hram(), timer(timer), serial(), joypad(joypad), svbk(0)
 {
+    ppu.bind_mmu(&*this);
 }
 
 u8 MMU::bus_read(u16 addr) const

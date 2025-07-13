@@ -5,13 +5,12 @@ GameboyCore::GameboyCore(QObject *parent)
     , clock(0)
     , cart{}
     , interrupts{}
-    , joypad{}
+    , joypad{interrupts}
     , timer{interrupts}
     , ppu{interrupts}
     , mmu{cart, ppu, interrupts, timer, joypad}
     , cpu{mmu, interrupts}
 {
-    ppu.bind_mmu(&mmu);
 }
 
 void GameboyCore::tick_systems()
