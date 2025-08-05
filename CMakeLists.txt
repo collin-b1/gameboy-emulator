@@ -20,7 +20,6 @@ endif ()
 #    message(FATAL_ERROR "Please define VCPKG_ROOT environment variable.")
 #endif()
 
-#find_package(SDL2 CONFIG REQUIRED)
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
 qt_standard_project_setup()
