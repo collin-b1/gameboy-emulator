@@ -8,7 +8,7 @@ namespace MBCTypes
 class NoMBC : public MBC<0x8000, 0x2000>
 {
 public:
-    NoMBC(const std::vector<u8> &rom_data) : MBC(rom_data) {};
+    NoMBC(const std::vector<u8> &rom_data) : MBC(rom_data, false, false) {};
 
     void handle_bank_switch(u16 addr, u8 data) override
     {
@@ -25,16 +25,13 @@ public:
 class MBC1 : public MBC<0x80000, 0x8000>
 {
 public:
-    MBC1(const std::vector<u8> &rom_data) : MBC(rom_data) {};
+    MBC1(const std::vector<u8> &rom_data, bool has_ram, bool has_battery) : MBC(rom_data, has_ram, has_battery) {};
 
     void handle_bank_switch(u16 addr, u8 data) override
     {
         if (addr <= 0x1FFF)
         {
-            if ((data & 0x0F) == 0xA)
-            {
-                ram_enabled = true;
-            }
+            ram_enabled = (data & 0x0F) == 0xA;
         }
 
         // ROM bank
@@ -59,13 +56,92 @@ public:
         }
     }
 
-    void write_ram(u16 addr, u8 data) override
-    {
-        // Do nothing
-    }
+    //    void write_ram(u16 addr, u8 data) override
+    //    {
+    //
+    //    }
 
 private:
     bool banking_mode;
+};
+
+class MBC3 : public MBC<0x100000, 0x8000>
+{
+public:
+    MBC3(const std::vector<u8> &rom_data, bool has_ram, bool has_battery, bool has_rtc)
+        : MBC(rom_data, has_ram, has_battery), has_rtc(has_rtc) {};
+
+    void handle_bank_switch(u16 addr, u8 data) override
+    {
+        if (addr <= 0x1FFF)
+        {
+            ram_enabled = (data & 0x0F) == 0xA;
+        }
+
+        // ROM bank
+        else if (addr <= 0x3FFF)
+        {
+            u8 rom_bank = data & 0x7F;
+            rom_bank_select = (rom_bank == 0) ? 1 : rom_bank;
+        }
+
+        // RAM bank OR upper bits of ROM bank number
+        else if (addr <= 0x5FFF)
+        {
+            ram_bank_select = data;
+        }
+
+        // Banking mode select
+        // https://gbdev.io/pandocs/MBC1.html#60007fff--banking-mode-select-write-only
+        else if (addr <= 0x7FFF)
+        {
+            // TODO: Implement latch clock for RTC
+        }
+    }
+
+    u8 read_ram(u16 addr) const override
+    {
+        if (has_ram && ram_enabled)
+        {
+            if (ram_bank_select <= 0x03)
+            {
+                const size_t offset = (addr - 0xA000) + (ram_bank_select * 0x2000);
+                if (offset < ram.size())
+                {
+                    return ram.at(offset);
+                }
+            }
+            else if (has_rtc && ram_bank_select >= 0x08 && ram_bank_select <= 0x0C)
+            {
+                // TODO: Replace with actual RTC registers
+                return 0xFF;
+            }
+        }
+
+        return 0xFF;
+    }
+
+    void write_ram(u16 addr, u8 data) override
+    {
+        if (has_ram && ram_enabled && addr >= 0xA000 && addr <= 0xBFFF)
+        {
+            if (ram_bank_select <= 0x03) // 0x00 - 0x03 is used for RAM
+            {
+                const size_t offset = (addr - 0xA000) + (ram_bank_select * 0x2000);
+                if (offset < ram.size())
+                {
+                    ram[offset] = data;
+                }
+            }
+            else if (ram_bank_select >= 0x08) // 0x08 - 0x0C is used for RTC
+            {
+                // TODO: Implement RTC registers
+            }
+        }
+    }
+
+private:
+    bool has_rtc;
 };
 } // namespace MBCTypes
 
@@ -156,18 +232,42 @@ bool Cart::load_headers_and_mbc(const std::vector<u8> &rom_data)
 
     switch (headers.cartridge_type)
     {
+    // ROM Only
     case CartridgeType::ROM_ONLY:
         mbc = std::make_unique<MBCTypes::NoMBC>(rom_data);
         break;
+
+    // MBC1
     case CartridgeType::MBC1:
-    case CartridgeType::MBC1_RAM:
-    case CartridgeType::MBC1_RAM_BATTERY:
-        mbc = std::make_unique<MBCTypes::MBC1>(rom_data);
+        mbc = std::make_unique<MBCTypes::MBC1>(rom_data, false, false);
         break;
+    case CartridgeType::MBC1_RAM:
+        mbc = std::make_unique<MBCTypes::MBC1>(rom_data, true, false);
+        break;
+    case CartridgeType::MBC1_RAM_BATTERY:
+        mbc = std::make_unique<MBCTypes::MBC1>(rom_data, true, true);
+        break;
+
+    // MBC3
+    case CartridgeType::MBC3_TIMER_BATTERY:
+        mbc = std::make_unique<MBCTypes::MBC3>(rom_data, false, true, true);
+        break;
+    case CartridgeType::MBC3_TIMER_RAM_BATTERY:
+        mbc = std::make_unique<MBCTypes::MBC3>(rom_data, true, true, true);
+        break;
+    case CartridgeType::MBC3:
+        mbc = std::make_unique<MBCTypes::MBC3>(rom_data, false, false, false);
+        break;
+    case CartridgeType::MBC3_RAM:
+        mbc = std::make_unique<MBCTypes::MBC3>(rom_data, true, false, false);
+        break;
+    case CartridgeType::MBC3_RAM_BATTERY:
+        mbc = std::make_unique<MBCTypes::MBC3>(rom_data, true, true, false);
+        break;
+
     default:
         std::cout << "Unsupported MBC type: 0x" << std::hex << static_cast<int>(headers.cartridge_type) << std::endl;
-        mbc = std::make_unique<MBCTypes::NoMBC>(rom_data);
-        break;
+        exit(7);
     }
 
     return true;

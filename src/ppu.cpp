@@ -543,6 +543,7 @@ void PPU::draw_frame()
     // Load tile map buffer
     load_tile_map_buffer();
 
+    // TODO: Replace with non-QT methods
     emit frame_ready(frame_buffer);
     emit tile_map_ready(tile_map_buffer);
 }

@@ -17,8 +17,13 @@ MainWindow::MainWindow(GameboyCore **core_ptr, QWidget *parent) : QMainWindow(pa
     auto *file_menu = menuBar()->addMenu(tr("File"));
 
     auto *load_rom_action = new QAction(tr("Load ROM from file"), this);
+    auto *save_screenshot_action = new QAction(tr("Save Screenshot"), this);
+
     file_menu->addAction(load_rom_action);
+    file_menu->addAction(save_screenshot_action);
+
     connect(load_rom_action, &QAction::triggered, this, &MainWindow::on_load_rom_clicked);
+    connect(save_screenshot_action, &QAction::triggered, this, &MainWindow::on_save_screenshot_clicked);
 
     // Renderer
     renderer = new RendererWidget(central);
@@ -79,6 +84,11 @@ void MainWindow::on_load_rom_clicked()
     {
         emit rom_loaded(file_path);
     }
+}
+
+void MainWindow::on_save_screenshot_clicked()
+{
+    // TODO: Implement screenshot functionality
 }
 
 RendererWidget *MainWindow::get_renderer()

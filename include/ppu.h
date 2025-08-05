@@ -88,7 +88,7 @@ public:
     void blank_line(u8 y);
 
     void tick(u16) override;
-    void increment_ly();
+    // void increment_ly();
     void dma_transfer(u8);
     void render_scanline();
     void draw_frame();

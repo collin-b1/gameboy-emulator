@@ -29,6 +29,7 @@ protected:
 
 private slots:
     void on_load_rom_clicked();
+    void on_save_screenshot_clicked();
 
 private:
     RendererWidget *renderer;
