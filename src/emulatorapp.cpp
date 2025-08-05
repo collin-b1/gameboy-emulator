@@ -45,9 +45,8 @@ void EmulatorApp::on_rom_loaded(const QString &path)
         return;
     }
 
-    connect(core->get_ppu(), &PPU::frame_ready, main_window->get_renderer(), &RendererWidget::update_frame);
-    connect(core->get_ppu(), &PPU::tile_map_ready, debug_window->get_tile_map_viewer(),
-            &TileMapViewerWidget::update_tile_map);
+    core->get_ppu().set_frame_listener(main_window->get_renderer());
+    core->get_ppu().set_tilemap_listener(debug_window->get_tile_map_viewer());
 
     debug_window->show();
 

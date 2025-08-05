@@ -15,12 +15,6 @@ TileMapViewerWidget::TileMapViewerWidget(QWidget *parent)
     setMouseTracking(true);
 }
 
-void TileMapViewerWidget::update_tile_map(const std::array<u32, TILE_MAP_SIZE> &ppu_tile_map_buffer)
-{
-    std::copy(ppu_tile_map_buffer.begin(), ppu_tile_map_buffer.end(), tile_map_buffer.begin());
-    update();
-}
-
 void TileMapViewerWidget::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
@@ -78,4 +72,14 @@ void TileMapViewerWidget::leaveEvent(QEvent *event)
     hovered_tile = QPoint(-1, -1);
     update();
     QWidget::leaveEvent(event);
+}
+
+void TileMapViewerWidget::on_frame_ready(const std::span<const u32> ppu_frame_buffer, size_t size)
+{
+    if (size != TILE_MAP_SIZE)
+    {
+        return;
+    }
+    std::copy(ppu_frame_buffer.begin(), ppu_frame_buffer.end(), tile_map_buffer.begin());
+    update();
 }

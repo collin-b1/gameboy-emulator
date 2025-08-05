@@ -1,11 +1,10 @@
 #include "ppu.h"
 #include "memory/mmu.h"
 
-#include <iostream>
+#include <algorithm>
 
-PPU::PPU(InterruptManager &imu, QObject *parent)
-    : QObject(parent)
-    , frame_buffer{}
+PPU::PPU(InterruptManager &imu)
+    : frame_buffer{}
     , imu(imu)
     , mmu(nullptr)
     , mode_clock(0)
@@ -49,6 +48,29 @@ PPU::PPU(InterruptManager &imu, QObject *parent)
 void PPU::bind_mmu(MMU *_mmu)
 {
     this->mmu = _mmu;
+}
+
+void PPU::set_frame_listener(IFrameListener *listener)
+{
+    frame_listener = listener;
+}
+
+void PPU::set_tilemap_listener(IFrameListener *listener)
+{
+    tilemap_listener = listener;
+}
+
+void PPU::notify_frame_ready()
+{
+    if (frame_listener)
+    {
+        frame_listener->on_frame_ready(frame_buffer, SCREEN_SIZE);
+    }
+
+    if (tilemap_listener)
+    {
+        tilemap_listener->on_frame_ready(tile_map_buffer, TILE_MAP_SIZE);
+    }
 }
 
 u8 PPU::read(u16 addr) const
@@ -542,10 +564,7 @@ void PPU::draw_frame()
 {
     // Load tile map buffer
     load_tile_map_buffer();
-
-    // TODO: Replace with non-QT methods
-    emit frame_ready(frame_buffer);
-    emit tile_map_ready(tile_map_buffer);
+    notify_frame_ready();
 }
 
 void PPU::blank_line(u8 y)

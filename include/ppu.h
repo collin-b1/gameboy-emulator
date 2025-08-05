@@ -1,13 +1,13 @@
 #pragma once
 
-#include <QObject>
-#include <array>
-#include <cstdint>
-
 #include "cpu/interrupt.h"
 #include "definitions.h"
 #include "memory/memory.h"
 #include "system.h"
+#include "ui/framelistener.h"
+#include <array>
+#include <cstdint>
+#include <memory>
 
 constexpr u16 VRAM_START = 0x8000;
 constexpr u16 VRAM_END = 0x9FFF;
@@ -58,14 +58,16 @@ enum PPUMode : u8
 
 class MMU;
 
-class PPU final : public QObject, public IMemory, public ITickableSystem
+class PPU final : public IMemory, public ITickableSystem
 {
-    Q_OBJECT
 
 public:
-    explicit PPU(InterruptManager &imu, QObject *parent = nullptr);
+    explicit PPU(InterruptManager &imu);
 
     void bind_mmu(MMU *_mmu);
+    void set_frame_listener(IFrameListener *frame_listener);
+    void set_tilemap_listener(IFrameListener *frame_listener);
+    void notify_frame_ready();
 
     [[nodiscard]] u8 read(u16) const override;
     void write(u16, u8) override;
@@ -93,12 +95,11 @@ public:
     void render_scanline();
     void draw_frame();
 
-signals:
-    void frame_ready(const std::array<u32, SCREEN_SIZE> &frame_buffer);
-    void tile_map_ready(const std::array<u32, TILE_MAP_SIZE> &tile_map_buffer);
-
 private:
     u64 _cycles{};
+
+    IFrameListener *frame_listener;
+    IFrameListener *tilemap_listener;
 
     std::array<u32, SCREEN_SIZE> frame_buffer;
     std::array<u32, TILE_MAP_SIZE> tile_map_buffer{};

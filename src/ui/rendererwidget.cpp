@@ -20,8 +20,12 @@ void RendererWidget::paintEvent(QPaintEvent *)
     painter.drawImage(this->rect(), frame_image);
 }
 
-void RendererWidget::update_frame(const std::array<u32, SCREEN_SIZE> &ppu_frame_buffer)
+void RendererWidget::on_frame_ready(const std::span<const u32> ppu_frame_buffer, size_t size)
 {
+    if (size != SCREEN_SIZE)
+    {
+        return;
+    }
     std::copy(ppu_frame_buffer.begin(), ppu_frame_buffer.end(), frame_buffer.begin());
     update();
 }

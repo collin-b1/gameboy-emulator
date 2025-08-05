@@ -51,9 +51,9 @@ bool GameboyCore::load_rom(const std::string &rom_path)
     return true;
 }
 
-const PPU *GameboyCore::get_ppu() const
+PPU &GameboyCore::get_ppu()
 {
-    return &ppu;
+    return ppu;
 }
 
 void GameboyCore::set_button_pressed(Gobby::JoypadInput button, bool pressed)

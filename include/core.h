@@ -21,8 +21,8 @@ public:
 
     void set_button_pressed(Gobby::JoypadInput button, bool pressed);
 
-    const PPU *get_ppu() const;
-    u8 *get_tile_map_buffer() const;
+    PPU &get_ppu();
+    // u8 *get_tile_map_buffer() const;
 
 private:
     u64 clock;
