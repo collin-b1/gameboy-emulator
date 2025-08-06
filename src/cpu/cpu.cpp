@@ -45,10 +45,10 @@ constexpr std::array<u8, 256> timings_cb{
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // 0xF0
 };
 
-CPU::CPU(MMU &mmu, InterruptManager &imu)
+CPU::CPU(Bus &bus, InterruptManager &imu)
     : registers{}
     , opcode(0)
-    , mmu(mmu)
+    , bus(bus)
     , imu(imu)
     , ime_scheduler(false)
     , is_halted(false)
@@ -69,12 +69,12 @@ void CPU::init_post_boot()
 
     registers.set_zero_flag(1);
 
-    auto checksum_is_zero = mmu.bus_read(0x014D) ? 1 : 0;
+    auto checksum_is_zero = bus.bus_read(0x014D) ? 1 : 0;
     registers.set_carry_flag(checksum_is_zero);
     registers.set_half_carry_flag(checksum_is_zero);
 
     // Disable boot rom
-    mmu.bus_write(0xFF50, 0x01);
+    bus.bus_write(0xFF50, 0x01);
 }
 
 u8 CPU::next_instruction()
@@ -90,7 +90,7 @@ u8 CPU::next_instruction()
     u8 cycles = 0;
     if (halt_bug_scheduler == 0)
     {
-        auto opcode = mmu.bus_read(registers.pc++);
+        auto opcode = bus.bus_read(registers.pc++);
         cycles = execute_opcode(opcode);
     }
     else
@@ -98,13 +98,13 @@ u8 CPU::next_instruction()
         // TODO: Fix Halt bug
         if (halt_bug_scheduler > 1)
         {
-            auto opcode = mmu.bus_read(registers.pc);
+            auto opcode = bus.bus_read(registers.pc);
             halt_bug_scheduler = 1;
             return 1;
         }
         else
         {
-            auto opcode = mmu.bus_read(registers.pc);
+            auto opcode = bus.bus_read(registers.pc);
             cycles = execute_opcode(opcode);
             halt_bug_scheduler = 0;
         }
@@ -196,8 +196,8 @@ std::string CPU::get_state() const
 {
     return std::format("AF:{:04X} BC:{:04X} DE:{:04X} HL:{:04X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}",
                        registers.af.word, registers.bc.word, registers.de.word, registers.hl.word, registers.sp,
-                       registers.pc, mmu.bus_read(registers.pc), mmu.bus_read(registers.pc + 1),
-                       mmu.bus_read(registers.pc + 2), mmu.bus_read(registers.pc + 3));
+                       registers.pc, bus.bus_read(registers.pc), bus.bus_read(registers.pc + 1),
+                       bus.bus_read(registers.pc + 2), bus.bus_read(registers.pc + 3));
 }
 
 u8 CPU::execute_opcode(u8 opcode)
@@ -838,7 +838,7 @@ u8 CPU::execute_opcode(u8 opcode)
         JP_cc_imm16(registers.get_zero_flag());
         break;
     case 0xCB: {
-        u8 cb_opcode = mmu.bus_read(registers.pc++);
+        u8 cb_opcode = bus.bus_read(registers.pc++);
         cycles += execute_cb_opcode(cb_opcode);
         break;
     }
@@ -1293,7 +1293,7 @@ void CPU::NOP()
 // CALL imm16
 void CPU::CALL_imm16()
 {
-    u16 imm16 = mmu.bus_read_word(registers.pc);
+    u16 imm16 = bus.bus_read_word(registers.pc);
     registers.pc += 2;
 
     PUSH_r16stk(registers.pc);
@@ -1303,7 +1303,7 @@ void CPU::CALL_imm16()
 // CALL cc, imm16
 void CPU::CALL_cc_imm16(bool condition_met)
 {
-    u16 imm16 = mmu.bus_read_word(registers.pc);
+    u16 imm16 = bus.bus_read_word(registers.pc);
     registers.pc += 2;
 
     if (condition_met)
@@ -1336,7 +1336,7 @@ void CPU::RETI()
 
 void CPU::JP_cc_imm16(bool condition_met)
 {
-    u16 nn = mmu.bus_read_word(registers.pc);
+    u16 nn = bus.bus_read_word(registers.pc);
     registers.pc += 2;
 
     if (condition_met)
@@ -1449,7 +1449,7 @@ void CPU::AND_A_r8(u8 &r8)
 
 void CPU::STOP()
 {
-    mmu.bus_write(0xFF04, 0); // STOP instruction resets and stops timer until stop mode is exited
+    bus.bus_write(0xFF04, 0); // STOP instruction resets and stops timer until stop mode is exited
     // exit(1);
 }
 
@@ -1469,24 +1469,24 @@ void CPU::EI()
 // LD [r16], imm8
 void CPU::LD_r16mem_imm8(u16 &r16)
 {
-    u8 imm8 = mmu.bus_read(registers.pc++);
-    mmu.bus_write(r16, imm8);
+    u8 imm8 = bus.bus_read(registers.pc++);
+    bus.bus_write(r16, imm8);
 }
 
 // INC [r16]
 void CPU::INC_r16mem(u16 &r16mem)
 {
-    u8 value = mmu.bus_read(r16mem);
+    u8 value = bus.bus_read(r16mem);
     INC_r8(value);
-    mmu.bus_write(r16mem, value);
+    bus.bus_write(r16mem, value);
 }
 
 // DEC [r16]
 void CPU::DEC_r16mem(u16 &r16mem)
 {
-    u8 value = mmu.bus_read(r16mem);
+    u8 value = bus.bus_read(r16mem);
     DEC_r8(value);
-    mmu.bus_write(r16mem, value);
+    bus.bus_write(r16mem, value);
 }
 
 // BIT b3, r8
@@ -1500,7 +1500,7 @@ void CPU::BIT_b3_r8(u8 bit, u8 &r8source)
 }
 void CPU::BIT_b3_r16mem(u8 bit, u16 &r16mem)
 {
-    u8 value = mmu.bus_read(r16mem);
+    u8 value = bus.bus_read(r16mem);
     u8 mask = (1 << bit);
     bool set = !!(mask & value);
 
@@ -1515,9 +1515,9 @@ void CPU::RES_b3_r8(u8 bit, u8 &r8)
 }
 void CPU::RES_b3_r16mem(u8 bit, u16 &r16mem)
 {
-    u8 value = mmu.bus_read(r16mem);
+    u8 value = bus.bus_read(r16mem);
     value &= ~(1 << bit);
-    mmu.bus_write(r16mem, value);
+    bus.bus_write(r16mem, value);
 }
 
 void CPU::SET_b3_r8(u8 bit, u8 &r8)
@@ -1527,9 +1527,9 @@ void CPU::SET_b3_r8(u8 bit, u8 &r8)
 
 void CPU::SET_b3_r16mem(u8 bit, u16 &r16mem)
 {
-    u8 value = mmu.bus_read(r16mem);
+    u8 value = bus.bus_read(r16mem);
     value |= 1 << bit;
-    mmu.bus_write(r16mem, value);
+    bus.bus_write(r16mem, value);
 }
 
 // INC r8
@@ -1553,7 +1553,7 @@ void CPU::DEC_r8(u8 &r8)
 // JR cc, imm8
 void CPU::JR_cc_imm8(bool condition_met)
 {
-    i8 e = (i8)mmu.bus_read(registers.pc++);
+    i8 e = (i8)bus.bus_read(registers.pc++);
     if (condition_met)
     {
         registers.pc += e;
@@ -1563,7 +1563,7 @@ void CPU::JR_cc_imm8(bool condition_met)
 // JP imm16
 void CPU::JP_imm16()
 {
-    u16 nn = mmu.bus_read_word(registers.pc++);
+    u16 nn = bus.bus_read_word(registers.pc++);
     registers.pc++;
     registers.pc = nn;
 }
@@ -1583,7 +1583,7 @@ void CPU::LD_r8_r8(u8 &r8dest, u8 &r8source)
 // LD r8, imm8
 void CPU::LD_r8_imm8(u8 &r8dest)
 {
-    u8 n = mmu.bus_read(registers.pc++);
+    u8 n = bus.bus_read(registers.pc++);
     r8dest = n;
 }
 
@@ -1695,7 +1695,7 @@ void CPU::CCF()
 // JR imm8
 void CPU::JR_imm8()
 {
-    i8 e = (i8)mmu.bus_read(registers.pc++);
+    i8 e = (i8)bus.bus_read(registers.pc++);
     registers.pc += e;
 }
 
@@ -1715,42 +1715,42 @@ void CPU::RLA()
 // LD A, (r16)
 void CPU::LD_A_r16mem(u16 &r16source)
 {
-    u8 r16mem = mmu.bus_read(r16source);
+    u8 r16mem = bus.bus_read(r16source);
     registers.af.msb = r16mem;
 }
 
 // LDH A, [C]
 void CPU::LDH_A_C()
 {
-    u8 ffc = mmu.bus_read(0xFF00 + registers.bc.lsb);
+    u8 ffc = bus.bus_read(0xFF00 + registers.bc.lsb);
     registers.af.msb = ffc;
 }
 
 // LDH A, [imm8]
 void CPU::LDH_A_imm8()
 {
-    u8 imm8 = mmu.bus_read(registers.pc++);
-    u8 ffimm8 = mmu.bus_read(0xFF00 + imm8);
+    u8 imm8 = bus.bus_read(registers.pc++);
+    u8 ffimm8 = bus.bus_read(0xFF00 + imm8);
     registers.af.msb = ffimm8;
 }
 
 // LDH [imm8], A
 void CPU::LDH_imm8_A()
 {
-    u8 imm8 = mmu.bus_read(registers.pc++);
-    mmu.bus_write(0xFF00 + imm8, registers.af.msb);
+    u8 imm8 = bus.bus_read(registers.pc++);
+    bus.bus_write(0xFF00 + imm8, registers.af.msb);
 }
 
 // LDH [C], A
 void CPU::LDH_C_A()
 {
-    mmu.bus_write(0xFF00 + registers.bc.lsb, registers.af.msb);
+    bus.bus_write(0xFF00 + registers.bc.lsb, registers.af.msb);
 }
 
 // LD r16, imm16
 void CPU::LD_r16_imm16(u16 &r16dest)
 {
-    u16 nn = mmu.bus_read_word(registers.pc);
+    u16 nn = bus.bus_read_word(registers.pc);
     registers.pc += 2;
     r16dest = nn;
 }
@@ -1758,9 +1758,9 @@ void CPU::LD_r16_imm16(u16 &r16dest)
 // LD [imm16], SP
 void CPU::LD_imm16_SP()
 {
-    u16 imm16 = mmu.bus_read_word(registers.pc);
+    u16 imm16 = bus.bus_read_word(registers.pc);
     registers.pc += 2;
-    mmu.bus_write_word(imm16, registers.sp);
+    bus.bus_write_word(imm16, registers.sp);
 }
 
 // INC r16
@@ -1788,23 +1788,23 @@ void CPU::ADD_HL_r16(u16 &r16)
 // LD [imm16], A
 void CPU::LD_imm16_A()
 {
-    u16 imm16 = mmu.bus_read_word(registers.pc++);
+    u16 imm16 = bus.bus_read_word(registers.pc++);
     registers.pc++;
-    mmu.bus_write(imm16, registers.af.msb);
+    bus.bus_write(imm16, registers.af.msb);
 }
 
 // LD [r16mem], A
 void CPU::LD_r16mem_A(u16 &r16dest)
 {
-    mmu.bus_write(r16dest, registers.af.msb);
+    bus.bus_write(r16dest, registers.af.msb);
 }
 
 // LD A, [imm16]
 void CPU::LD_A_imm16()
 {
-    u16 imm16 = mmu.bus_read_word(registers.pc++);
+    u16 imm16 = bus.bus_read_word(registers.pc++);
     registers.pc++;
-    u8 n = mmu.bus_read(imm16);
+    u8 n = bus.bus_read(imm16);
     registers.af.msb = n;
 }
 
@@ -1812,7 +1812,7 @@ void CPU::LD_A_imm16()
 void CPU::ADD_SP_imm8()
 {
     u16 sp = registers.sp;
-    i8 imm8 = (i8)mmu.bus_read(registers.pc++);
+    i8 imm8 = (i8)bus.bus_read(registers.pc++);
 
     bool has_half_carry = Registers::addition_half_carry(static_cast<u8>(sp & 0xff), imm8);
     bool has_carry = Registers::addition_carry(static_cast<u8>(sp & 0xff), imm8);
@@ -1828,7 +1828,7 @@ void CPU::ADD_SP_imm8()
 void CPU::LD_HL_SP_imm8()
 {
     u16 sp = registers.sp;
-    i8 imm8 = (i8)mmu.bus_read(registers.pc++);
+    i8 imm8 = (i8)bus.bus_read(registers.pc++);
 
     bool has_half_carry = Registers::addition_half_carry(static_cast<u8>(sp & 0xff), imm8);
     bool has_carry = Registers::addition_carry(static_cast<u8>(sp & 0xff), imm8);
@@ -1851,7 +1851,7 @@ void CPU::LD_SP_HL()
 void CPU::PUSH_r16stk(u16 &r16source)
 {
     registers.sp -= 2;
-    mmu.bus_write_word(registers.sp, r16source);
+    bus.bus_write_word(registers.sp, r16source);
 }
 
 // RLC r8
@@ -1868,11 +1868,11 @@ void CPU::RLC_r8(u8 &r8)
 }
 void CPU::RLC_r16mem(u16 &r16mem)
 {
-    u8 value = mmu.bus_read(r16mem);
+    u8 value = bus.bus_read(r16mem);
     u8 msbit = value >> 7;
     value <<= 1;
     value |= msbit;
-    mmu.bus_write(r16mem, value);
+    bus.bus_write(r16mem, value);
 
     registers.set_zero_flag(value == 0);
     registers.set_sub_flag(0);
@@ -1893,11 +1893,11 @@ void CPU::RRC_r8(u8 &r8)
 }
 void CPU::RRC_r16mem(u16 &r16mem)
 {
-    u8 value = mmu.bus_read(r16mem);
+    u8 value = bus.bus_read(r16mem);
     u8 lsbit = value & 1;
     value >>= 1;
     value |= (lsbit << 7);
-    mmu.bus_write(r16mem, value);
+    bus.bus_write(r16mem, value);
 
     registers.set_zero_flag(value == 0);
     registers.set_sub_flag(0);
@@ -1920,12 +1920,12 @@ void CPU::RL_r8(u8 &r8)
 // RL [r16mem]
 void CPU::RL_r16mem(u16 &r16mem)
 {
-    u8 value = mmu.bus_read(r16mem);
+    u8 value = bus.bus_read(r16mem);
     const u8 carry = registers.get_carry_flag();
     const u8 msbit = value >> 7;
     value <<= 1;
     value |= carry;
-    mmu.bus_write(r16mem, value);
+    bus.bus_write(r16mem, value);
 
     registers.set_zero_flag(value == 0);
     registers.set_sub_flag(0);
@@ -1947,12 +1947,12 @@ void CPU::RR_r8(u8 &r8)
 }
 void CPU::RR_r16mem(u16 &r16mem)
 {
-    u8 value = mmu.bus_read(r16mem);
+    u8 value = bus.bus_read(r16mem);
     const u8 lsbit = value & 1;
     const u8 carry = registers.get_carry_flag();
     value >>= 1;
     value |= carry << 7;
-    mmu.bus_write(r16mem, value);
+    bus.bus_write(r16mem, value);
 
     registers.set_zero_flag(value == 0);
     registers.set_sub_flag(0);
@@ -1972,10 +1972,10 @@ void CPU::SLA_r8(u8 &r8)
 }
 void CPU::SLA_r16mem(u16 &r16mem)
 {
-    u8 value = mmu.bus_read(r16mem);
+    u8 value = bus.bus_read(r16mem);
     u8 msbit = value >> 7;
     value <<= 1;
-    mmu.bus_write(r16mem, value);
+    bus.bus_write(r16mem, value);
 
     registers.set_zero_flag(value == 0);
     registers.set_sub_flag(0);
@@ -1996,12 +1996,12 @@ void CPU::SRA_r8(u8 &r8)
 }
 void CPU::SRA_r16mem(u16 &r16mem)
 {
-    u8 value = mmu.bus_read(r16mem);
+    u8 value = bus.bus_read(r16mem);
     u8 lsbit = value & 1;
     u8 msbit = value & 0x80;
     value >>= 1;
     value |= msbit;
-    mmu.bus_write(r16mem, value);
+    bus.bus_write(r16mem, value);
 
     registers.set_zero_flag(value == 0);
     registers.set_sub_flag(0);
@@ -2022,11 +2022,11 @@ void CPU::SWAP_r8(u8 &r8)
 }
 void CPU::SWAP_r16mem(u16 &r16mem)
 {
-    u8 value = mmu.bus_read(r16mem);
+    u8 value = bus.bus_read(r16mem);
     u8 lsnibble = value & 0x0F;
     u8 msnibble = value & 0xF0;
     value = (msnibble >> 4) | (lsnibble << 4);
-    mmu.bus_write(r16mem, value);
+    bus.bus_write(r16mem, value);
 
     registers.set_zero_flag(value == 0);
     registers.set_sub_flag(0);
@@ -2045,10 +2045,10 @@ void CPU::SRL_r8(u8 &r8)
 }
 void CPU::SRL_r16mem(u16 &r16mem)
 {
-    u8 value = mmu.bus_read(r16mem);
+    u8 value = bus.bus_read(r16mem);
     u8 lsbit = value & 1;
     value >>= 1;
-    mmu.bus_write(r16mem, value);
+    bus.bus_write(r16mem, value);
 
     registers.set_zero_flag(value == 0);
     registers.set_sub_flag(0);
@@ -2058,7 +2058,7 @@ void CPU::SRL_r16mem(u16 &r16mem)
 
 void CPU::POP_r16stk(u16 &r16dest)
 {
-    u16 data = mmu.bus_read_word(registers.sp);
+    u16 data = bus.bus_read_word(registers.sp);
     registers.sp += 2;
 
     r16dest = data;
@@ -2094,7 +2094,7 @@ void CPU::CP_A_r8(u8 &r8)
 
 void CPU::ADD_A_imm8()
 {
-    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 imm8 = bus.bus_read(registers.pc++);
     u8 result = registers.af.msb + imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
@@ -2105,7 +2105,7 @@ void CPU::ADD_A_imm8()
 
 void CPU::ADC_A_imm8()
 {
-    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 imm8 = bus.bus_read(registers.pc++);
     u8 carry = (u8)registers.get_carry_flag();
     u8 result = registers.af.msb + imm8 + carry;
 
@@ -2126,7 +2126,7 @@ void CPU::ADC_A_imm8()
 
 void CPU::SUB_A_imm8()
 {
-    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 imm8 = bus.bus_read(registers.pc++);
     u8 result = registers.af.msb - imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(1);
@@ -2137,7 +2137,7 @@ void CPU::SUB_A_imm8()
 
 void CPU::SBC_A_imm8()
 {
-    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 imm8 = bus.bus_read(registers.pc++);
     u8 carry = registers.get_carry_flag();
     u8 result = registers.af.msb - imm8 - carry;
 
@@ -2158,7 +2158,7 @@ void CPU::SBC_A_imm8()
 
 void CPU::AND_A_imm8()
 {
-    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 imm8 = bus.bus_read(registers.pc++);
     u8 result = registers.af.msb & imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
@@ -2169,7 +2169,7 @@ void CPU::AND_A_imm8()
 
 void CPU::XOR_A_imm8()
 {
-    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 imm8 = bus.bus_read(registers.pc++);
     u8 result = registers.af.msb ^ imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
@@ -2180,7 +2180,7 @@ void CPU::XOR_A_imm8()
 
 void CPU::OR_A_imm8()
 {
-    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 imm8 = bus.bus_read(registers.pc++);
     u8 result = registers.af.msb | imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(0);
@@ -2191,7 +2191,7 @@ void CPU::OR_A_imm8()
 
 void CPU::CP_A_imm8()
 {
-    u8 imm8 = mmu.bus_read(registers.pc++);
+    u8 imm8 = bus.bus_read(registers.pc++);
     u8 result = registers.af.msb - imm8;
     registers.set_zero_flag(result == 0);
     registers.set_sub_flag(1);
@@ -2202,60 +2202,60 @@ void CPU::CP_A_imm8()
 // LD r8, [r16]
 void CPU::LD_r8_r16mem(u8 &r8, u16 &r16mem)
 {
-    r8 = mmu.bus_read(r16mem);
+    r8 = bus.bus_read(r16mem);
 }
 
 // LD [r16], r8
 void CPU::LD_r16mem_r8(u16 &r16mem, u8 &r8)
 {
-    mmu.bus_write(r16mem, r8);
+    bus.bus_write(r16mem, r8);
 }
 
 // ADD A, [r16mem]
 void CPU::ADD_A_r16mem(u16 &r16mem)
 {
-    u8 data = mmu.bus_read(r16mem);
+    u8 data = bus.bus_read(r16mem);
     ADD_A_r8(data);
 }
 
 void CPU::ADC_A_r16mem(u16 &r16mem)
 {
-    u8 data = mmu.bus_read(r16mem);
+    u8 data = bus.bus_read(r16mem);
     ADC_A_r8(data);
 }
 
 void CPU::SUB_A_r16mem(u16 &r16mem)
 {
-    u8 data = mmu.bus_read(r16mem);
+    u8 data = bus.bus_read(r16mem);
     SUB_A_r8(data);
 }
 
 void CPU::SBC_A_r16mem(u16 &r16mem)
 {
-    u8 data = mmu.bus_read(r16mem);
+    u8 data = bus.bus_read(r16mem);
     SBC_A_r8(data);
 }
 
 void CPU::AND_A_r16mem(u16 &r16mem)
 {
-    u8 data = mmu.bus_read(r16mem);
+    u8 data = bus.bus_read(r16mem);
     AND_A_r8(data);
 }
 
 void CPU::XOR_A_r16mem(u16 &r16mem)
 {
-    u8 data = mmu.bus_read(r16mem);
+    u8 data = bus.bus_read(r16mem);
     XOR_A_r8(data);
 }
 
 void CPU::OR_A_r16mem(u16 &r16mem)
 {
-    u8 data = mmu.bus_read(r16mem);
+    u8 data = bus.bus_read(r16mem);
     OR_A_r8(data);
 }
 
 void CPU::CP_A_r16mem(u16 &r16mem)
 {
-    u8 data = mmu.bus_read(r16mem);
+    u8 data = bus.bus_read(r16mem);
     CP_A_r8(data);
 }

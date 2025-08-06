@@ -1,12 +1,12 @@
 #include "ppu.h"
-#include "memory/mmu.h"
+#include "memory/bus.h"
 
 #include <algorithm>
 
 PPU::PPU(InterruptManager &imu)
     : frame_buffer{}
     , imu(imu)
-    , mmu(nullptr)
+    , bus(nullptr)
     , mode_clock(0)
     , last_mode(PPUMode::MODE_OAM_SEARCH)
     , window_line_y(0)
@@ -45,9 +45,9 @@ PPU::PPU(InterruptManager &imu)
     stat.ppu_mode = MODE_OAM_SEARCH;
 }
 
-void PPU::bind_mmu(MMU *_mmu)
+void PPU::bind_mmu(Bus *_mmu)
 {
-    this->mmu = _mmu;
+    this->bus = _mmu;
 }
 
 void PPU::set_frame_listener(IFrameListener *listener)
@@ -403,7 +403,7 @@ void PPU::dma_transfer(u8 source_byte)
 {
     u16 base = source_byte << 8;
     for (int i = 0; i < 0xA0; ++i)
-        oam[i] = mmu->bus_read(base + i);
+        oam[i] = bus->bus_read(base + i);
 }
 
 const u8 *PPU::get_bg_tile_data(u8 idx) const

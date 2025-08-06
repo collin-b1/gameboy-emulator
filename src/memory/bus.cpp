@@ -1,15 +1,15 @@
-#include "memory/mmu.h"
+#include "memory/bus.h"
 #include "ppu.h"
 #include <iomanip>
 #include <iostream>
 
-MMU::MMU(Cart &cart, PPU &ppu, InterruptManager &imu, Timer &timer, Joypad &joypad)
+Bus::Bus(Cart &cart, PPU &ppu, InterruptManager &imu, Timer &timer, Joypad &joypad)
     : cart(cart), ppu(ppu), imu(imu), wram(), hram(), timer(timer), serial(), joypad(joypad), svbk(0)
 {
     ppu.bind_mmu(&*this);
 }
 
-u8 MMU::bus_read(u16 addr) const
+u8 Bus::bus_read(u16 addr) const
 {
     // Cartridge ROM
     if (addr >= 0x0000 && addr <= 0x7FFF)
@@ -147,7 +147,7 @@ u8 MMU::bus_read(u16 addr) const
     return 0;
 }
 
-void MMU::bus_write(u16 addr, u8 data)
+void Bus::bus_write(u16 addr, u8 data)
 {
     // Cartridge ROM
     if (addr >= 0x0000 && addr <= 0x7FFF)
@@ -289,12 +289,12 @@ void MMU::bus_write(u16 addr, u8 data)
     }
 }
 
-u16 MMU::bus_read_word(u16 addr) const
+u16 Bus::bus_read_word(u16 addr) const
 {
     return (0xFF & bus_read(addr) | (bus_read(addr + 1) << 8));
 }
 
-void MMU::bus_write_word(u16 addr, u16 data)
+void Bus::bus_write_word(u16 addr, u16 data)
 {
     u8 lsb = data & 0xFF;
     bus_write(addr, lsb);
@@ -303,16 +303,16 @@ void MMU::bus_write_word(u16 addr, u16 data)
     bus_write(addr + 1, msb);
 }
 
-bool MMU::is_boot_rom_disabled() const
+bool Bus::is_boot_rom_disabled() const
 {
     return cart.is_boot_rom_disabled();
 }
 
-bool MMU::load_rom(std::string rom_path)
+bool Bus::load_rom(std::string rom_path)
 {
     return cart.load_rom(rom_path);
 }
-void MMU::stop_div(bool stopped)
+void Bus::stop_div(bool stopped)
 {
     timer.stop_div(stopped);
 }

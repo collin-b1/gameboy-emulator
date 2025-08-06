@@ -1,15 +1,14 @@
 #include "core.h"
 
-GameboyCore::GameboyCore(QObject *parent)
-    : QObject(parent)
-    , clock(0)
+GameboyCore::GameboyCore()
+    : clock(0)
     , cart{}
     , interrupts{}
     , joypad{interrupts}
     , timer{interrupts}
     , ppu{interrupts}
-    , mmu{cart, ppu, interrupts, timer, joypad}
-    , cpu{mmu, interrupts}
+    , bus{cart, ppu, interrupts, timer, joypad}
+    , cpu{bus, interrupts}
 {
 }
 

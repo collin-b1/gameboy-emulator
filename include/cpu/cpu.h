@@ -1,7 +1,7 @@
 #pragma once
 #include "definitions.h"
 #include "interrupt.h"
-#include "memory/mmu.h"
+#include "memory/bus.h"
 #include "register.h"
 #include <cstdint>
 #include <string>
@@ -14,7 +14,7 @@ struct Instruction
 class CPU
 {
 public:
-    CPU(MMU &, InterruptManager &);
+    CPU(Bus &, InterruptManager &);
 
     void init_post_boot();
 
@@ -144,6 +144,6 @@ private:
     bool is_halted, is_stopped;
     u8 ime_scheduler, halt_bug_scheduler;
     u8 opcode;
-    MMU &mmu;
+    Bus &bus;
     InterruptManager &imu;
 };

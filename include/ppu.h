@@ -56,7 +56,7 @@ enum PPUMode : u8
     MODE_VRAM = 3
 };
 
-class MMU;
+class Bus;
 
 class PPU final : public IMemory, public ITickableSystem
 {
@@ -64,7 +64,7 @@ class PPU final : public IMemory, public ITickableSystem
 public:
     explicit PPU(InterruptManager &imu);
 
-    void bind_mmu(MMU *_mmu);
+    void bind_mmu(Bus *_mmu);
     void set_frame_listener(IFrameListener *frame_listener);
     void set_tilemap_listener(IFrameListener *frame_listener);
     void notify_frame_ready();
@@ -104,7 +104,7 @@ private:
     std::array<u32, SCREEN_SIZE> frame_buffer;
     std::array<u32, TILE_MAP_SIZE> tile_map_buffer{};
 
-    MMU *mmu;
+    Bus *bus;
     InterruptManager &imu;
 
     PPUMode last_mode;

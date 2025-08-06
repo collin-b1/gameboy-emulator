@@ -19,10 +19,10 @@ constexpr uint16_t HRAM_END = 0xFFFE;
 
 class PPU;
 
-class MMU
+class Bus
 {
 public:
-    MMU(Cart &, PPU &, InterruptManager &, Timer &, Joypad &);
+    Bus(Cart &, PPU &, InterruptManager &, Timer &, Joypad &);
     bool is_boot_rom_disabled() const;
     void stop_div(bool);
     [[nodiscard]] uint8_t bus_read(uint16_t) const;

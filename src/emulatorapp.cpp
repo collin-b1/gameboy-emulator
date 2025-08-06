@@ -37,7 +37,7 @@ void EmulatorApp::tick()
 void EmulatorApp::on_rom_loaded(const QString &path)
 {
     delete core;
-    core = new GameboyCore(this);
+    core = new GameboyCore();
 
     if (!core->load_rom(path.toStdString()))
     {
