@@ -4,6 +4,7 @@
 
 # CMake
 CMakeUserPresets.json
+CMakeLists.txt.user
 
 *.gb
 *.gbc
