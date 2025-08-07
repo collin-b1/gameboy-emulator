@@ -55,7 +55,7 @@ void TileMapViewerWidget::mouseMoveEvent(QMouseEvent *event)
 
         const u16 tile_addr = 0x8000 + hovered_tile_idx * 16;
         const QString tile_tooltip =
-            QString("Tile %1 (0x%2)").arg(hovered_tile_idx).arg(std::format("{:04X}", tile_addr));
+            QString("Tile %1 (0x%2)").arg(hovered_tile_idx).arg(QString::fromStdString(std::format("{:04X}", tile_addr)));
         QToolTip::showText(event->globalPosition().toPoint(), tile_tooltip, this);
     }
     else
