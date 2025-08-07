@@ -143,7 +143,6 @@ private:
     Registers registers;
     bool is_halted, is_stopped;
     u8 ime_scheduler, halt_bug_scheduler;
-    u8 opcode;
     Bus &bus;
     InterruptManager &imu;
 };

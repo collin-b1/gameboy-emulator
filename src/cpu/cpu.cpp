@@ -46,14 +46,7 @@ constexpr std::array<u8, 256> timings_cb{
 };
 
 CPU::CPU(Bus &bus, InterruptManager &imu)
-    : registers{}
-    , opcode(0)
-    , bus(bus)
-    , imu(imu)
-    , ime_scheduler(false)
-    , is_halted(false)
-    , is_stopped(false)
-    , halt_bug_scheduler(0)
+    : is_halted(false), is_stopped(false), ime_scheduler(false), halt_bug_scheduler(0), bus(bus), imu(imu)
 {
 }
 
@@ -121,12 +114,9 @@ u8 CPU::next_instruction()
             halt_bug_scheduler = 1;
             return 1;
         }
-        else
-        {
-            auto opcode = bus.bus_read(registers.pc);
-            cycles = execute_opcode(opcode);
-            halt_bug_scheduler = 0;
-        }
+        auto opcode = bus.bus_read(registers.pc);
+        cycles = execute_opcode(opcode);
+        halt_bug_scheduler = 0;
     }
 
     // Handle 1-cycle delay from EI instruction
@@ -159,10 +149,7 @@ void CPU::handle_interrupts()
     }
 
     // ie & iflag != 0 should unhalt regardless of ime
-    if (interrupts && is_halted)
-    {
-        is_halted = false;
-    }
+    is_halted = false;
 
     if (!ime)
     {
