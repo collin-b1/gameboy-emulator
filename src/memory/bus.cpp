@@ -1,5 +1,5 @@
 #include "memory/bus.h"
-#include "ppu.h"
+#include "ppu/ppu.h"
 #include <iomanip>
 #include <iostream>
 

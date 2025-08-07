@@ -1,5 +1,5 @@
 #include "emulatorapp.h"
-#include "ui/debugwindow.h"
+#include "ui/debugwidget.h"
 #include "ui/mainwindow.h"
 #include <QMessageBox>
 #include <QTimer>
@@ -9,7 +9,6 @@ EmulatorApp::EmulatorApp(QObject *parent) : QObject(parent)
 {
     core = nullptr;
     main_window = new MainWindow(&core);
-    debug_window = new DebugWindow(&core);
 
     // Render loop
     timer = new QTimer(this);
@@ -46,9 +45,10 @@ void EmulatorApp::on_rom_loaded(const QString &path)
     }
 
     core->get_ppu().set_frame_listener(main_window->get_renderer());
-    core->get_ppu().set_tilemap_listener(debug_window->get_tile_map_viewer());
+    core->get_ppu().set_tilemap_listener(main_window->get_debug_widget()->get_tile_map_viewer());
+    core->get_ppu().set_oam_listener(main_window->get_debug_widget()->get_oam_viewer());
 
-    debug_window->show();
+    // debug_window->show();
 
     timer->start(16);
 }

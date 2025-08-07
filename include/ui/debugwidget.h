@@ -5,12 +5,13 @@
 #include "ui/oamviewerwidget.h"
 #include "ui/tilemapviewerwidget.h"
 
-class DebugWindow : public QWidget
+class DebugWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit DebugWindow(GameboyCore **core, QWidget *parent = nullptr);
+    explicit DebugWidget(GameboyCore **core, QWidget *parent = nullptr);
     TileMapViewerWidget *get_tile_map_viewer();
+    OamViewerWidget *get_oam_viewer();
 
 private:
     GameboyCore **core_ptr;

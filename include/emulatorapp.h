@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core.h"
-#include "ui/debugwindow.h"
+#include "ui/debugwidget.h"
 #include "ui/mainwindow.h"
 #include <QObject>
 
@@ -20,5 +20,4 @@ private:
     GameboyCore *core;
     QTimer *timer;
     MainWindow *main_window;
-    DebugWindow *debug_window;
 };

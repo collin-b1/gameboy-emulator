@@ -1,4 +1,4 @@
-#include "ppu.h"
+#include "ppu/ppu.h"
 #include "memory/bus.h"
 
 #include <algorithm>
@@ -60,6 +60,11 @@ void PPU::set_tilemap_listener(IFrameListener *listener)
     tilemap_listener = listener;
 }
 
+void PPU::set_oam_listener(ISpriteFrameListener *sprite_listener)
+{
+    oam_listener = sprite_listener;
+}
+
 void PPU::notify_frame_ready()
 {
     if (frame_listener)
@@ -70,6 +75,17 @@ void PPU::notify_frame_ready()
     if (tilemap_listener)
     {
         tilemap_listener->on_frame_ready(tile_map_buffer, TILE_MAP_SIZE);
+    }
+
+    if (oam_listener)
+    {
+        std::array<Object, 40> objects;
+
+        for (auto i{0}; i < 40; ++i)
+        {
+            objects[i] = get_object_from_oam(i);
+        }
+        oam_listener->on_frame_ready(objects);
     }
 }
 

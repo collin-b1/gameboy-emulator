@@ -2,7 +2,7 @@
 
 #include "cpu/register.h"
 #include "definitions.h"
-#include "ppu.h"
+#include "ppu/ppu.h"
 #include "ui/framelistener.h"
 #include <QImage>
 #include <QObject>

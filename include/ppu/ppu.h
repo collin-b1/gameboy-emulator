@@ -3,6 +3,8 @@
 #include "cpu/interrupt.h"
 #include "definitions.h"
 #include "memory/memory.h"
+#include "obj.h"
+#include "ppumode.h"
 #include "system.h"
 #include "ui/framelistener.h"
 #include <array>
@@ -23,39 +25,6 @@ constexpr u32 CYCLES_PER_FRAME = 154 * CYCLES_PER_SCANLINE;
 constexpr u32 CYCLES_OAM = 80;
 constexpr u32 CYCLES_HBLANK = 80;
 
-struct Object
-{
-    u8 y;
-    u8 x;
-    u8 tile_index;
-    union {
-        u8 flags;
-        struct
-        {
-            u8 cgb_palette : 3;
-            u8 bank : 1;
-            u8 dmg_palette : 1;
-            u8 x_flip : 1;
-            u8 y_flip : 1;
-            u8 priority : 1;
-        };
-    } flags;
-};
-
-struct IndexedObject
-{
-    Object obj;
-    u8 index;
-};
-
-enum PPUMode : u8
-{
-    MODE_HBLANK = 0,
-    MODE_VBLANK = 1,
-    MODE_OAM_SEARCH = 2,
-    MODE_VRAM = 3
-};
-
 class Bus;
 
 class PPU final : public IMemory, public ITickableSystem
@@ -67,6 +36,7 @@ public:
     void bind_mmu(Bus *_mmu);
     void set_frame_listener(IFrameListener *frame_listener);
     void set_tilemap_listener(IFrameListener *frame_listener);
+    void set_oam_listener(ISpriteFrameListener *sprite_frame_listener);
     void notify_frame_ready();
 
     [[nodiscard]] u8 read(u16) const override;
@@ -100,6 +70,7 @@ private:
 
     IFrameListener *frame_listener;
     IFrameListener *tilemap_listener;
+    ISpriteFrameListener *oam_listener;
 
     std::array<u32, SCREEN_SIZE> frame_buffer;
     std::array<u32, TILE_MAP_SIZE> tile_map_buffer{};

@@ -1,9 +1,9 @@
-#include "ui/debugwindow.h"
+#include "ui/debugwidget.h"
 #include "definitions.h"
 #include <QTabWidget>
 #include <QVBoxLayout>
 
-DebugWindow::DebugWindow(GameboyCore **core_ptr, QWidget *parent) : QWidget(parent), core_ptr(core_ptr)
+DebugWidget::DebugWidget(GameboyCore **core_ptr, QWidget *parent) : QWidget(parent), core_ptr(core_ptr)
 {
     auto *layout = new QVBoxLayout(this);
 
@@ -22,7 +22,12 @@ DebugWindow::DebugWindow(GameboyCore **core_ptr, QWidget *parent) : QWidget(pare
     setWindowTitle("Gobby Debug Tools");
 }
 
-TileMapViewerWidget *DebugWindow::get_tile_map_viewer()
+TileMapViewerWidget *DebugWidget::get_tile_map_viewer()
 {
     return tile_map_viewer;
+}
+
+OamViewerWidget *DebugWidget::get_oam_viewer()
+{
+    return oam_viewer;
 }

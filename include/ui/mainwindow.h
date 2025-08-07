@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "core.h"
+#include "debugwidget.h"
 #include "ui/rendererwidget.h"
 #include <QDragEnterEvent>
 #include <QDropEvent>
@@ -16,6 +17,7 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(GameboyCore **core_ptr, QWidget *parent = nullptr);
     RendererWidget *get_renderer();
+    DebugWidget *get_debug_widget();
 
 signals:
     void rom_loaded(const QString &path);
@@ -29,9 +31,12 @@ protected:
 
 private slots:
     void on_load_rom_clicked();
-    void on_save_screenshot_clicked();
 
 private:
     RendererWidget *renderer;
+    DebugWidget *debug_widget;
     GameboyCore **core_ptr;
+#ifdef __EMSCRIPTEN__
+    void trigger_wasm_file_dialog();
+#endif
 };

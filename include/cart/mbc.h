@@ -1,8 +1,14 @@
 #pragma once
 
-#include "cart/imbc.h"
+#include "memory/memory.h"
 #include <algorithm>
 #include <vector>
+
+class IMBC : public IMemory
+{
+public:
+    virtual ~IMBC() = default;
+};
 
 template <size_t ROM_SIZE, size_t RAM_SIZE> class MBC : public IMBC
 {

@@ -6,8 +6,8 @@
 #include <string>
 #include <vector>
 
-#include "cart/imbc.h"
 #include "definitions.h"
+#include "mbc.h"
 #include "memory/memory.h"
 
 constexpr u16 BOOT_ROM_SIZE = 0x100;

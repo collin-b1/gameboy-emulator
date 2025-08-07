@@ -5,7 +5,7 @@
 #include "definitions.h"
 #include "joypad.h"
 #include "memory/bus.h"
-#include "ppu.h"
+#include "ppu/ppu.h"
 #include <string>
 
 class GameboyCore
