@@ -31,12 +31,10 @@ protected:
 
 private slots:
     void on_load_rom_clicked();
+    void on_pause_emulator_clicked();
 
 private:
     RendererWidget *renderer;
     DebugWidget *debug_widget;
     GameboyCore **core_ptr;
-#ifdef __EMSCRIPTEN__
-    void trigger_wasm_file_dialog();
-#endif
 };

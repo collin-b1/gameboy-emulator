@@ -23,6 +23,7 @@ public:
 
 private:
     u64 clock;
+    bool paused;
 
     Cart cart;
     CPU cpu;

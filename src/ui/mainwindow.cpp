@@ -9,11 +9,6 @@
 #include <QVBoxLayout>
 #include <iostream>
 
-#ifdef __EMSCRIPTEN__
-#include <QPushButton>
-#include <QStatusBar>
-#endif
-
 MainWindow::MainWindow(GameboyCore **core_ptr, QWidget *parent) : QMainWindow(parent), core_ptr(core_ptr)
 {
     auto *splitter = new QSplitter(Qt::Horizontal);
@@ -31,21 +26,21 @@ MainWindow::MainWindow(GameboyCore **core_ptr, QWidget *parent) : QMainWindow(pa
     splitter->setStretchFactor(0, 3); // renderer gets more space
     splitter->setStretchFactor(1, 2); // debug window less
 
+    // menuBar()->setContentsMargins(0, 0, 0, 0);
+
     // Menu Bar
-#ifndef __EMSCRIPTEN__
     auto *file_menu = menuBar()->addMenu(tr("File"));
     auto *load_rom_action = new QAction(tr("Load ROM from file"), this);
     file_menu->addAction(load_rom_action);
 
     connect(load_rom_action, &QAction::triggered, this, &MainWindow::on_load_rom_clicked);
+    
+    auto *emulation_menu = menuBar()->addMenu(tr("Emulation"));
+    auto *pause_action = new QAction(tr("Pause/Resume"), this);
+    emulation_menu->addAction(pause_action);
 
     // Allow dragging and dropping files onto the window (ROMs)
     setAcceptDrops(true);
-#else
-    auto *load_rom_button = new QPushButton("Load ROM", this);
-    connect(load_rom_button, &QPushButton::clicked, this, &MainWindow::on_load_rom_clicked);
-    statusBar()->addPermanentWidget(load_rom_button);
-#endif
 
     setCentralWidget(splitter);
 }
@@ -93,62 +88,17 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::on_load_rom_clicked()
 {
-#ifdef __EMSCRIPTEN__
-    trigger_wasm_file_dialog();
-#else
     QString file_path = QFileDialog::getOpenFileName(this, tr("Load ROM"), "", tr("Gameboy ROMs (*.gb *.gbc)"));
     if (!file_path.isEmpty())
     {
         emit rom_loaded(file_path);
     }
-#endif
 }
 
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-#include <emscripten/bind.h>
-
-void MainWindow::trigger_wasm_file_dialog()
+void MainWindow::on_pause_emulator_clicked()
 {
-    EM_ASM({
-        if (!Module.romInput)
-        {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.gb,.gbc'; // Optional: restrict file types
-            input.style.display = 'none';
-            input.onchange = (e) =>
-            {
-                const file = e.target.files[0];
-                const reader = new FileReader();
-                reader.onload = () =>
-                {
-                    const buffer = new Uint8Array(reader.result);
-                    Module.ccall('handle_rom_upload', null, [ 'array', 'number' ], [ buffer, buffer.length ]);
-                };
-                reader.readAsArrayBuffer(file);
-            };
-            document.body.appendChild(input);
-            Module.romInput = input;
-        }
-        Module.romInput.click();
-    });
+    // core_ptr
 }
-
-extern "C" EMSCRIPTEN_KEEPALIVE void handle_rom_upload(const uint8_t *data, int size)
-{
-    QByteArray rom_data(reinterpret_cast<const char *>(data), size);
-
-    // Safely access the MainWindow from Qt's main thread
-    QMetaObject::invokeMethod(qApp, [rom_data]() {
-        MainWindow *window = qobject_cast<MainWindow *>(qApp->activeWindow());
-        /*if (window && window->core_ptr && window->core_ptr[0])
-        {
-            window->core_ptr[0]->loadROM(rom_data);
-        }*/
-    });
-}
-#endif
 
 RendererWidget *MainWindow::get_renderer()
 {

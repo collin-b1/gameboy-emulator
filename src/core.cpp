@@ -1,4 +1,5 @@
 #include "core.h"
+#include <iostream>
 
 GameboyCore::GameboyCore()
     : clock(0)
@@ -42,6 +43,7 @@ bool GameboyCore::load_rom(const std::string &rom_path)
 
     if (!boot_rom_loaded)
     {
+        std::cout << "Boot rom not found, initializing post-boot values." << std::endl;
         cpu.init_post_boot();
     }
 

@@ -47,8 +47,6 @@ void EmulatorApp::on_rom_loaded(const QString &path)
     core->get_ppu().set_frame_listener(main_window->get_renderer());
     core->get_ppu().set_tilemap_listener(main_window->get_debug_widget()->get_tile_map_viewer());
     core->get_ppu().set_oam_listener(main_window->get_debug_widget()->get_oam_viewer());
-
-    // debug_window->show();
-
+    
     timer->start(16);
 }

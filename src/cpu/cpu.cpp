@@ -73,6 +73,25 @@ void CPU::init_post_boot()
     registers.set_carry_flag(checksum_is_zero);
     registers.set_half_carry_flag(checksum_is_zero);
 
+    // Registers are initialized to 0x00 by default
+
+    // Serial registers
+    bus.bus_write(0xFF02, 0x7E); // SC
+
+    // Timer registers
+    bus.bus_write(0xFF04, 0x18); // DIV
+    bus.bus_write(0xFF07, 0xF8); // TAC
+
+    // Interrupt flags
+    bus.bus_write(0xFF0F, 0xE1); // IF
+
+    // PPU registers
+    bus.bus_write(0xFF40, 0x91); // LCDC
+    bus.bus_write(0xFF41, 0x81); // STAT
+    bus.bus_write(0xFF44, 0x91); // LY
+    bus.bus_write(0xFF46, 0xFF); // DMA
+    bus.bus_write(0xFF47, 0xFC); // BGP
+
     // Disable boot rom
     bus.bus_write(0xFF50, 0x01);
 }
